@@ -35,20 +35,20 @@ namespace LRCounter.Configuration
 
         // ─── 共有の奥行き ───────────────────────────────────────────────
         // Canvas全体をカメラ側へ寄せて前面化する距離(ワールド単位/メートル)。大きいほど手前。
-        public virtual float DepthZ { get; set; } = 3f;
+        public virtual float DepthZ { get; set; } = 0.70f;
 
         // ─── 精度バー(外側)の配置（いずれもCanvas高さ/幅の比 0〜1） ───────
         public virtual bool ShowAccBar { get; set; } = true;      // 表示ON/OFF
-        public virtual float AccBarLeftX { get; set; } = 0.385f;  // 左バーの中心X
-        public virtual float AccBarRightX { get; set; } = 0.615f; // 右バーの中心X
+        public virtual float AccBarLeftX { get; set; } = 0.33f;  // 左バーの中心X
+        public virtual float AccBarRightX { get; set; } = 0.67f; // 右バーの中心X
         public virtual float AccBarY { get; set; } = 0.35f;       // バー下端のY
         public virtual float AccBarHeight { get; set; } = 0.50f;  // バーの高さ
         public virtual float AccBarWidth { get; set; } = 0.01f;   // バーの幅
 
         // ─── 平均点数バー(内側)の配置（いずれもCanvas比 0〜1） ──────────────
         public virtual bool ShowScoreBar { get; set; } = true;    // 表示ON/OFF
-        public virtual float ScoreBarLeftX { get; set; } = 0.405f;
-        public virtual float ScoreBarRightX { get; set; } = 0.595f;
+        public virtual float ScoreBarLeftX { get; set; } = 0.35f;
+        public virtual float ScoreBarRightX { get; set; } = 0.65f;
         public virtual float ScoreBarY { get; set; } = 0.45f;
         public virtual float ScoreBarHeight { get; set; } = 0.27f;
         public virtual float ScoreBarWidth { get; set; } = 0.01f;

@@ -206,30 +206,35 @@ namespace LRCounter.Controllers
         [UIAction("reset-settings")]
         public void ResetSettings()
         {
-            _config.Enabled = true;
-            _config.MinStarRating = 0f;
-            _config.TextSize = 3f;
-            _config.ShowTotalLabel = true;
-            _config.ShowAccBar = true;
-            _config.ShowScoreBar = true;
-            _config.DecimalPlaces = 2;
-            _config.LeftHandColor = "#FF5555";
-            _config.RightHandColor = "#5555FF";
-            _config.ManualStarRating = 0f;
-            _config.DepthZ = 3f;
-            _config.AccBarLeftX = 0.385f;
-            _config.AccBarRightX = 0.615f;
-            _config.AccBarY = 0.35f;
-            _config.AccBarHeight = 0.50f;
-            _config.AccBarWidth = 0.01f;
-            _config.ScoreBarLeftX = 0.405f;
-            _config.ScoreBarRightX = 0.595f;
-            _config.ScoreBarY = 0.45f;
-            _config.ScoreBarHeight = 0.27f;
-            _config.ScoreBarWidth = 0.01f;
-            _config.TotalLabelX = 0.5f;
-            _config.TotalLabelY = 0.80f;
-            _config.TotalLabelSize = 4.0f;
+            // PluginConfig のフィールド初期化子（デフォルト値）を単一の正として使う。
+            // ここに値を直書きすると PluginConfig とズレてリセットが効かなくなるため、
+            // 既定値のインスタンスから読み戻す。
+            var d = new PluginConfig();
+
+            _config.Enabled = d.Enabled;
+            _config.MinStarRating = d.MinStarRating;
+            _config.TextSize = d.TextSize;
+            _config.ShowTotalLabel = d.ShowTotalLabel;
+            _config.ShowAccBar = d.ShowAccBar;
+            _config.ShowScoreBar = d.ShowScoreBar;
+            _config.DecimalPlaces = d.DecimalPlaces;
+            _config.LeftHandColor = d.LeftHandColor;
+            _config.RightHandColor = d.RightHandColor;
+            _config.ManualStarRating = d.ManualStarRating;
+            _config.DepthZ = d.DepthZ;
+            _config.AccBarLeftX = d.AccBarLeftX;
+            _config.AccBarRightX = d.AccBarRightX;
+            _config.AccBarY = d.AccBarY;
+            _config.AccBarHeight = d.AccBarHeight;
+            _config.AccBarWidth = d.AccBarWidth;
+            _config.ScoreBarLeftX = d.ScoreBarLeftX;
+            _config.ScoreBarRightX = d.ScoreBarRightX;
+            _config.ScoreBarY = d.ScoreBarY;
+            _config.ScoreBarHeight = d.ScoreBarHeight;
+            _config.ScoreBarWidth = d.ScoreBarWidth;
+            _config.TotalLabelX = d.TotalLabelX;
+            _config.TotalLabelY = d.TotalLabelY;
+            _config.TotalLabelSize = d.TotalLabelSize;
             _config.Changed();
 
             NotifyPropertyChanged(nameof(Enabled));

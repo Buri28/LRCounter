@@ -345,8 +345,8 @@ namespace LRCounter.Controllers
             var rt = go.AddComponent<RectTransform>();
             rt.SetParent(canvasRT, false);
             // バーより下に配置（Yを下げるほど画面の下側へ。0=Canvas下端 / 1=上端）
-            rt.anchorMin = new Vector2(0.00f, 0.28f);
-            rt.anchorMax = new Vector2(1.00f, 0.45f);
+            rt.anchorMin = new Vector2(0.00f, 0.15f);
+            rt.anchorMax = new Vector2(1.00f, 0.32f);
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
 
