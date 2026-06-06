@@ -6,45 +6,47 @@ namespace LRCounter.Models
     public static class PPCalculator
     {
         // ScoreSaberのPP曲線テーブル（精度→PP倍率のマッピング）
-        // pp = ppMultiplier(精度) × star × 42.117208413  （star×42.117 = APIの maxPP）
-        // 値は現行ScoreSaberの実スコア(by-id/.../scores の baseScore と pp)から逆算して再構築した。
-        // 検証: 73.07% → 倍率0.633（10.19★ maxPP429.14 で 271.5pp）が実値と一致。
-        // 精度が高いほど倍率が急激に上がり、95%で約1.0、99%で約2.3を超える。
+        // pp = ppMultiplier(精度) × star × 42.117208413
+        // 0.70〜0.995 は MyBeatSaberStats の ScoreSaber キャッシュ約 3.6 万件から
+        // 精度帯ごとの中央値を再集計した実測値。99.9% 以上と低精度端はサンプルが薄いため、
+        // 端点だけは既存の理論寄り値を残して補間する。
         private static readonly (double threshold, double ppMultiplier)[] PPCurve =
         {
-            (1.00,   3.90),   // 99.5%超は実スコアが少なく外挿（最上位はやや誤差あり）
-            (0.9975, 3.45),
-            (0.995,  3.05),
-            (0.9925, 2.66),
-            (0.99,   2.327),
-            (0.9875, 2.066),
-            (0.985,  1.862),
-            (0.984,  1.793),
-            (0.9825, 1.698),
-            (0.98,   1.576),
-            (0.975,  1.382),
-            (0.97,   1.251),
-            (0.965,  1.157),
-            (0.96,   1.089),
-            (0.955,  1.035),
-            (0.95,   1.005),
-            (0.945,  0.966),
-            (0.94,   0.945),
-            (0.93,   0.905),
-            (0.92,   0.875),
-            (0.91,   0.855),
-            (0.90,   0.835),
-            (0.875,  0.780),
-            (0.85,   0.755),
-            (0.825,  0.715),
-            (0.80,   0.690),
-            (0.775,  0.667),
-            (0.75,   0.645),
-            (0.725,  0.629),
-            (0.70,   0.610),
-            (0.65,   0.555),
-            (0.60,   0.450),
-            (0.50,   0.260),
+            (1.0000, 7.424),
+            (0.9990, 6.241),
+            (0.9975, 3.679),
+            (0.9950, 3.251),
+            (0.9925, 2.584),
+            (0.9900, 2.311),
+            (0.9875, 2.044),
+            (0.9850, 1.823),
+            (0.9825, 1.670),
+            (0.9800, 1.574),
+            (0.9775, 1.463),
+            (0.9750, 1.374),
+            (0.9725, 1.306),
+            (0.9700, 1.248),
+            (0.9650, 1.155),
+            (0.9600, 1.089),
+            (0.9550, 1.038),
+            (0.9500, 1.007),
+            (0.9400, 0.944),
+            (0.9300, 0.906),
+            (0.9200, 0.874),
+            (0.9100, 0.849),
+            (0.9000, 0.828),
+            (0.8750, 0.782),
+            (0.8500, 0.747),
+            (0.8250, 0.715),
+            (0.8000, 0.688),
+            (0.7750, 0.667),
+            (0.7500, 0.647),
+            (0.7250, 0.630),
+            (0.7000, 0.615),
+            (0.6500, 0.590),
+            (0.6000, 0.450),
+            (0.5500, 0.212),
+            (0.5000, 0.182),
             (0.00,   0.000),
         };
 
@@ -54,7 +56,7 @@ namespace LRCounter.Models
         public static double CalculatePP(double accuracy, double starRating)
         {
             if (starRating <= 0) return 0; // アンランク譜面
-            if (accuracy <= 0)  return 0;
+            if (accuracy <= 0) return 0;
             if (accuracy > 1.0) accuracy = 1.0; // 念のため上限を1に丸める
 
             double ppMultiplier = GetPPMultiplier(accuracy);
@@ -80,7 +82,7 @@ namespace LRCounter.Models
 
                 if (accuracy <= upper && accuracy >= lower)
                 {
-                    double t         = (accuracy - lower) / (upper - lower); // 0.0〜1.0の補間係数
+                    double t = (accuracy - lower) / (upper - lower); // 0.0〜1.0の補間係数
                     double upperMult = PPCurve[i].ppMultiplier;
                     double lowerMult = PPCurve[i + 1].ppMultiplier;
                     return lowerMult + t * (upperMult - lowerMult);
@@ -101,9 +103,9 @@ namespace LRCounter.Models
         // BeatSaberのスコア構造: beforeCut(最大70) + afterCut(最大30) + cutDistance(最大15) = 最大115
         public static int CalculateNoteScore(int beforeCutScore, int afterCutScore, int cutDistanceScore)
         {
-            return Clamp(beforeCutScore,    0, 70)
-                 + Clamp(afterCutScore,     0, 30)
-                 + Clamp(cutDistanceScore,  0, 15);
+            return Clamp(beforeCutScore, 0, 70)
+                 + Clamp(afterCutScore, 0, 30)
+                 + Clamp(cutDistanceScore, 0, 15);
         }
 
         // APIから取得した合計カットスコアを0〜115の範囲に正規化する
