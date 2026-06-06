@@ -1,0 +1,142 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>LRCounter</AssemblyName>
+    <RootNamespace>LRCounter</RootNamespace>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Deterministic>true</Deterministic>
+    <!-- 実際にプレイ・デプロイする Beat Saber インストール。環境変数 BeatSaberPath で上書き可能 -->
+    <BeatSaberPath Condition="'$(BeatSaberPath)' == ''">D:\BSManager\BSInstances\1.40.8</BeatSaberPath>
+    <BeatSaberManagedPath>$(BeatSaberPath)\Beat Saber_Data\Managed</BeatSaberManagedPath>
+    <BeatSaberPluginsPath>$(BeatSaberPath)\Plugins</BeatSaberPluginsPath>
+    <BundledDepsDir>$(MSBuildThisFileDirectory)..\externals\extracted</BundledDepsDir>
+    <OutputPath>bin\$(Configuration)\$(TargetFramework)\</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- .NET Framework HTTP client -->
+    <Reference Include="System.Net.Http" />
+
+    <!-- Beat Saber Core -->
+    <Reference Include="Main">
+      <HintPath>$(BeatSaberManagedPath)\Main.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(BeatSaberManagedPath)\UnityEngine.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(BeatSaberManagedPath)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(BeatSaberManagedPath)\UnityEngine.UIModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(BeatSaberManagedPath)\UnityEngine.UI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>$(BeatSaberManagedPath)\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="HMUI">
+      <HintPath>$(BeatSaberManagedPath)\HMUI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="BeatSaber.ViewSystem">
+      <HintPath>$(BeatSaberManagedPath)\BeatSaber.ViewSystem.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <!-- IPA / BSIPA -->
+    <Reference Include="IPA">
+      <HintPath>$(BundledDepsDir)\bsipa\IPA\Data\Managed\IPA.Loader.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+
+    <!-- Harmony -->
+    <Reference Include="0Harmony">
+      <HintPath>$(BundledDepsDir)\bsipa\IPA\Libs\0Harmony.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+
+    <!-- BSML -->
+    <Reference Include="BSML">
+      <HintPath Condition="Exists('$(BeatSaberPluginsPath)\BSML.dll')">$(BeatSaberPluginsPath)\BSML.dll</HintPath>
+      <HintPath Condition="!Exists('$(BeatSaberPluginsPath)\BSML.dll')">$(BundledDepsDir)\bsml\Plugins\BSML.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+
+    <!-- SiraUtil -->
+    <Reference Include="SiraUtil">
+      <HintPath Condition="Exists('$(BeatSaberPluginsPath)\SiraUtil.dll')">$(BeatSaberPluginsPath)\SiraUtil.dll</HintPath>
+      <HintPath Condition="!Exists('$(BeatSaberPluginsPath)\SiraUtil.dll')">$(BundledDepsDir)\sirautil\Plugins\SiraUtil.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+
+    <!-- Zenject -->
+    <Reference Include="Zenject">
+      <HintPath>$(BeatSaberManagedPath)\Zenject.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="Zenject-usage">
+      <HintPath>$(BeatSaberManagedPath)\Zenject-usage.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+
+    <!-- TMPro -->
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(BeatSaberManagedPath)\Unity.TextMeshPro.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <!-- Beat Saber 1.41+ では GameCore が分割されている -->
+    <Reference Include="DataModels">
+      <HintPath>$(BeatSaberManagedPath)\DataModels.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Core">
+      <HintPath>$(BeatSaberManagedPath)\Core.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="GameplayCore">
+      <HintPath>$(BeatSaberManagedPath)\GameplayCore.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="BeatmapCore">
+      <HintPath>$(BeatSaberManagedPath)\BeatmapCore.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <!-- PlatformUserModel (UserInfo / IPlatformUserModel) -->
+    <Reference Include="PlatformUserModel">
+      <HintPath>$(BeatSaberManagedPath)\PlatformUserModel.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <!-- BS Note Controller etc -->
+    <Reference Include="NoteJump">
+      <HintPath>$(BeatSaberManagedPath)\Main.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- BSML リソースとして埋め込む -->
+    <EmbeddedResource Include="Views\*.bsml" />
+    <EmbeddedResource Include="manifest.json" />
+  </ItemGroup>
+
+</Project>

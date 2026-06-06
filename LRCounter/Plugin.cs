@@ -1,0 +1,62 @@
+using HarmonyLib;
+using IPA;
+using IPA.Config;
+using IPA.Config.Stores;
+using IPA.Loader;
+using LRCounter.Configuration;
+using LRCounter.Installers;
+using SiraUtil.Zenject;
+using System.Reflection;
+using IPALogger = IPA.Logging.Logger;
+
+namespace LRCounter
+{
+    // IPAプラグインのエントリーポイント。BeatSaber起動時に1回だけ初期化される
+    [Plugin(RuntimeOptions.SingleStartInit)]
+    public class Plugin
+    {
+        // どこからでもログを書けるようにstaticで公開
+        internal static IPALogger Log { get; private set; } = null!;
+        // Harmonyパッチ（現在は未使用だが将来のパッチ用に確保）
+        internal static Harmony HarmonyInstance { get; private set; } = null!;
+        // 設定ファイル（UserData/LRCounter.json）へのアクセス
+        internal static PluginConfig Config { get; private set; } = null!;
+
+        // IPAによってBeatSaber起動時に1回呼ばれるコンストラクタ
+        [Init]
+        public Plugin(IPALogger logger, Config conf, Zenjector zenjector)
+        {
+            Log            = logger;
+            Config         = conf.Generated<PluginConfig>(); // IPAが設定ファイルを自動生成・ロード
+            HarmonyInstance = new Harmony("com.buri28.lrcounter");
+
+            zenjector.UseLogger(logger);
+            zenjector.UseHttpService();
+            zenjector.UseMetadataBinder<Plugin>();
+
+            // ゲームプレイシーン（曲プレイ中）にサービスとコントローラーを登録
+            zenjector.Install<LRGameInstaller>(Location.Player, Config);
+
+            // メニューシーン（設定画面）に設定UIを登録
+            zenjector.Install<LRMenuInstaller>(Location.Menu, Config);
+
+            Log.Info("LRCounter initialized.");
+        }
+
+        // アプリ起動時（Init後）に呼ばれる。Harmonyパッチを適用する
+        [OnStart]
+        public void OnApplicationStart()
+        {
+            HarmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
+            Log.Info("LRCounter started.");
+        }
+
+        // アプリ終了時に呼ばれる。Harmonyパッチを全て解除する
+        [OnExit]
+        public void OnApplicationQuit()
+        {
+            HarmonyInstance.UnpatchSelf();
+            Log.Info("LRCounter exited.");
+        }
+    }
+}

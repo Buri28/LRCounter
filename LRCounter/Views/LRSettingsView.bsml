@@ -1,0 +1,140 @@
+<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+   xsi:noNamespaceSchemaLocation='https://raw.githubusercontent.com/nicoco007/BeatSaberMarkupLanguage/main/Schema/bsml.xsd'>
+
+  <vertical child-expand-width='true' child-control-height='true' spacing='1' pad='3'>
+
+    <!-- ヘッダー -->
+    <horizontal>
+      <text text='LRCounter' font-size='5' align='Center' bold='true' color='#FFFFFF' />
+    </horizontal>
+
+    <horizontal>
+      <text text='左右それぞれのPPをリアルタイム表示します' font-size='3' align='Center' color='#AAAAAA' />
+    </horizontal>
+
+    <!-- 区切り線 -->
+    <horizontal preferred-height='0.5' bg='round-rect-panel' bg-color='#444444' />
+
+    <!-- Enabled -->
+    <horizontal>
+      <toggle-setting text='Enabled'
+                      value='enabled'
+                      apply-on-change='true'
+                      hover-hint='MODの有効/無効を切り替えます' />
+    </horizontal>
+
+    <!-- MinStarRating -->
+    <horizontal>
+      <slider-setting text='最低Star評価'
+                      value='min-star'
+                      apply-on-change='true'
+                      min='0' max='20' increment='0.5'
+                      hover-hint='指定したStar評価以上の譜面でのみ表示します（0=常に表示）' />
+    </horizontal>
+
+    <!-- TextSize -->
+    <horizontal>
+      <slider-setting text='テキストサイズ'
+                      value='text-size'
+                      apply-on-change='true'
+                      min='5' max='30' increment='1'
+                      hover-hint='HUDに表示するテキストのサイズを変更します' />
+    </horizontal>
+
+    <!-- DecimalPlaces -->
+    <horizontal>
+      <slider-setting text='小数点以下桁数'
+                      value='decimal-places'
+                      apply-on-change='true'
+                      min='0' max='4' increment='1'
+                      integer-only='true'
+                      hover-hint='PPの小数点以下の表示桁数' />
+    </horizontal>
+
+    <!-- ShowTotalPP -->
+    <horizontal>
+      <toggle-setting text='合計PPを表示'
+                      value='show-total'
+                      apply-on-change='true'
+                      hover-hint='左右PPの合計値も表示します' />
+    </horizontal>
+
+    <!-- Star評価設定 -->
+    <horizontal preferred-height='0.5' bg='round-rect-panel' bg-color='#444444' />
+
+    <horizontal>
+      <text text='★ Star評価（PP計算用）' font-size='3.5' align='Center' color='#FFD700' />
+    </horizontal>
+
+    <horizontal>
+      <slider-setting text='Manual Star Rating'
+                      value='manual-star'
+                      apply-on-change='true'
+                      min='0' max='20' increment='0.1'
+                      hover-hint='プレイする譜面のStar評価を設定します。0 = PP非表示（正確率のみ表示）' />
+    </horizontal>
+
+    <horizontal>
+      <text text='※ ScoreSaberのStar評価を手動で設定してください' font-size='2.5' align='Center' color='#AAAAAA' />
+    </horizontal>
+
+    <!-- 区切り線 -->
+    <horizontal preferred-height='0.5' bg='round-rect-panel' bg-color='#444444' />
+
+    <!-- カラー設定 -->
+    <horizontal>
+      <text text='カラー設定（HTMLカラーコード）' font-size='3.5' align='Center' color='#CCCCCC' />
+    </horizontal>
+
+    <horizontal>
+      <string-setting text='左手カラー'
+                      value='left-color'
+                      apply-on-change='true'
+                      hover-hint='左手PPのテキストカラー（例: #FF5555）' />
+    </horizontal>
+
+    <horizontal>
+      <string-setting text='右手カラー'
+                      value='right-color'
+                      apply-on-change='true'
+                      hover-hint='右手PPのテキストカラー（例: #5555FF）' />
+    </horizontal>
+
+    <!-- 区切り線 -->
+    <horizontal preferred-height='0.5' bg='round-rect-panel' bg-color='#444444' />
+
+    <!-- 表示位置設定 -->
+    <horizontal>
+      <text text='表示位置（オフセット）' font-size='3.5' align='Center' color='#CCCCCC' />
+    </horizontal>
+
+    <horizontal>
+      <slider-setting text='X オフセット'
+                      value='pos-x'
+                      apply-on-change='true'
+                      min='-600' max='600' increment='10'
+                      hover-hint='HUD表示位置の横方向オフセット' />
+    </horizontal>
+
+    <horizontal>
+      <slider-setting text='Y オフセット'
+                      value='pos-y'
+                      apply-on-change='true'
+                      min='-600' max='600' increment='10'
+                      hover-hint='HUD表示位置の縦方向オフセット' />
+    </horizontal>
+
+    <!-- 区切り線 -->
+    <horizontal preferred-height='0.5' bg='round-rect-panel' bg-color='#444444' />
+
+    <!-- ボタン -->
+    <horizontal>
+      <button text='RESET ALL SETTINGS'
+              on-click='reset-settings'
+              bg-color='#993333'
+              hover-hint='すべての設定を初期値にリセットします' />
+    </horizontal>
+
+  </vertical>
+
+</bg>

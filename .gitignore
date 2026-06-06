@@ -1,0 +1,28 @@
+## Visual Studio / .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.userprefs
+
+## JetBrains Rider
+.idea/
+*.sln.iml
+
+## VSCode
+.vscode/launch.json
+
+## Claude AI
+.claude/
+
+## Build output
+build.bat
+*.dll
+!Libs/*.dll
+
+## External dependencies
+externals/
+
+## Logs
+*.log
