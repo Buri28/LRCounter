@@ -46,12 +46,26 @@ namespace LRCounter.Controllers
             set { _config.TextSize = value; _config.Changed(); }
         }
 
-        // ———— ShowTotalPP ————
-        [UIValue("show-total")]
-        public bool ShowTotalPP
+        // ———— Show toggles (per element) ————
+        [UIValue("show-total-label")]
+        public bool ShowTotalLabel
         {
-            get => _config.ShowTotalPP;
-            set { _config.ShowTotalPP = value; _config.Changed(); }
+            get => _config.ShowTotalLabel;
+            set { _config.ShowTotalLabel = value; _config.Changed(); }
+        }
+
+        [UIValue("show-acc-bar")]
+        public bool ShowAccBar
+        {
+            get => _config.ShowAccBar;
+            set { _config.ShowAccBar = value; _config.Changed(); }
+        }
+
+        [UIValue("show-score-bar")]
+        public bool ShowScoreBar
+        {
+            get => _config.ShowScoreBar;
+            set { _config.ShowScoreBar = value; _config.Changed(); }
         }
 
         // ———— DecimalPlaces ————
@@ -166,6 +180,28 @@ namespace LRCounter.Controllers
             set { _config.ScoreBarWidth = value; _config.Changed(); }
         }
 
+        // ———— Total label (combined %/PP) ————
+        [UIValue("total-x")]
+        public float TotalLabelX
+        {
+            get => _config.TotalLabelX;
+            set { _config.TotalLabelX = value; _config.Changed(); }
+        }
+
+        [UIValue("total-y")]
+        public float TotalLabelY
+        {
+            get => _config.TotalLabelY;
+            set { _config.TotalLabelY = value; _config.Changed(); }
+        }
+
+        [UIValue("total-size")]
+        public float TotalLabelSize
+        {
+            get => _config.TotalLabelSize;
+            set { _config.TotalLabelSize = value; _config.Changed(); }
+        }
+
         // ———— Reset Button ————
         [UIAction("reset-settings")]
         public void ResetSettings()
@@ -173,7 +209,9 @@ namespace LRCounter.Controllers
             _config.Enabled = true;
             _config.MinStarRating = 0f;
             _config.TextSize = 3f;
-            _config.ShowTotalPP = true;
+            _config.ShowTotalLabel = true;
+            _config.ShowAccBar = true;
+            _config.ShowScoreBar = true;
             _config.DecimalPlaces = 2;
             _config.LeftHandColor = "#FF5555";
             _config.RightHandColor = "#5555FF";
@@ -189,12 +227,17 @@ namespace LRCounter.Controllers
             _config.ScoreBarY = 0.45f;
             _config.ScoreBarHeight = 0.27f;
             _config.ScoreBarWidth = 0.01f;
+            _config.TotalLabelX = 0.5f;
+            _config.TotalLabelY = 0.80f;
+            _config.TotalLabelSize = 4.0f;
             _config.Changed();
 
             NotifyPropertyChanged(nameof(Enabled));
             NotifyPropertyChanged(nameof(MinStarRating));
             NotifyPropertyChanged(nameof(TextSize));
-            NotifyPropertyChanged(nameof(ShowTotalPP));
+            NotifyPropertyChanged(nameof(ShowTotalLabel));
+            NotifyPropertyChanged(nameof(ShowAccBar));
+            NotifyPropertyChanged(nameof(ShowScoreBar));
             NotifyPropertyChanged(nameof(DecimalPlaces));
             NotifyPropertyChanged(nameof(LeftHandColor));
             NotifyPropertyChanged(nameof(RightHandColor));
@@ -210,6 +253,9 @@ namespace LRCounter.Controllers
             NotifyPropertyChanged(nameof(ScoreBarY));
             NotifyPropertyChanged(nameof(ScoreBarHeight));
             NotifyPropertyChanged(nameof(ScoreBarWidth));
+            NotifyPropertyChanged(nameof(TotalLabelX));
+            NotifyPropertyChanged(nameof(TotalLabelY));
+            NotifyPropertyChanged(nameof(TotalLabelSize));
             Plugin.Log.Info("Settings reset to defaults.");
         }
     }

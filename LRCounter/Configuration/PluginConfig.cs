@@ -27,9 +27,6 @@ namespace LRCounter.Configuration
         // 右手の表示カラー（16進文字列）
         public virtual string RightHandColor { get; set; } = "#5555FF";
 
-        // 合計PPも表示するか
-        public virtual bool ShowTotalPP { get; set; } = true;
-
         // PPの小数点以下の桁数
         public virtual int DecimalPlaces { get; set; } = 2;
 
@@ -41,6 +38,7 @@ namespace LRCounter.Configuration
         public virtual float DepthZ { get; set; } = 3f;
 
         // ─── 精度バー(外側)の配置（いずれもCanvas高さ/幅の比 0〜1） ───────
+        public virtual bool ShowAccBar { get; set; } = true;      // 表示ON/OFF
         public virtual float AccBarLeftX { get; set; } = 0.385f;  // 左バーの中心X
         public virtual float AccBarRightX { get; set; } = 0.615f; // 右バーの中心X
         public virtual float AccBarY { get; set; } = 0.35f;       // バー下端のY
@@ -48,11 +46,18 @@ namespace LRCounter.Configuration
         public virtual float AccBarWidth { get; set; } = 0.01f;   // バーの幅
 
         // ─── 平均点数バー(内側)の配置（いずれもCanvas比 0〜1） ──────────────
+        public virtual bool ShowScoreBar { get; set; } = true;    // 表示ON/OFF
         public virtual float ScoreBarLeftX { get; set; } = 0.405f;
         public virtual float ScoreBarRightX { get; set; } = 0.595f;
         public virtual float ScoreBarY { get; set; } = 0.45f;
         public virtual float ScoreBarHeight { get; set; } = 0.27f;
         public virtual float ScoreBarWidth { get; set; } = 0.01f;
+
+        // ─── 合算ラベル（左右合計の精度・PPを中央上部に表示） ───────────────
+        public virtual bool ShowTotalLabel { get; set; } = true; // 表示ON/OFF
+        public virtual float TotalLabelX { get; set; } = 0.5f;   // 中心X（Canvas幅比）
+        public virtual float TotalLabelY { get; set; } = 0.80f;  // 下端Y（Canvas高さ比）
+        public virtual float TotalLabelSize { get; set; } = 4.0f;  // フォントサイズ
 
         // Changed イベント（IPA が生成するストアのためのメソッド）
         public virtual void Changed() { }

@@ -24,12 +24,14 @@ namespace LRCounter.Controllers
         private Image? _leftFill;          // 精度に応じて縦に伸びる塗りつぶし部分
         private Image? _leftFlashOverlay;  // 精度が下がったときに赤く光るオーバーレイ
         private TMP_Text? _leftLabel;         // バー上部に表示する%テキスト
+        private TMP_Text? _leftPPLabel;       // %ラベルのさらに上に表示するPP数値
         private double _prevLeftAcc = 0;   // 前フレームの精度（下落検出に使う）
 
         // 右バー関連
         private Image? _rightFill;
         private Image? _rightFlashOverlay;
         private TMP_Text? _rightLabel;
+        private TMP_Text? _rightPPLabel;
         private double _prevRightAcc = 0;
 
         // フラッシュ終了時刻（Time.time基準、-1は非アクティブ）
@@ -42,6 +44,9 @@ namespace LRCounter.Controllers
 
         // デバッグ用：バー下部にスコア内訳を表示するテキスト（背景なし）
         private TMP_Text? _debugLabel;
+
+        // 合算ラベル：左右合計の精度・PPを中央上部に表示（位置・サイズは設定で可変）
+        private TMP_Text? _totalLabel;
 
         // 平均点数表示：グッドカットの平均生スコア(0〜115)を画面中央の左右に縦バーで表示する。
         // ブロック累積方式をやめ、外側の精度バーと同じ「現在値で連続した塗りつぶし」方式にした。
@@ -287,16 +292,46 @@ namespace LRCounter.Controllers
             canvasRT.sizeDelta = new Vector2(200f, 100f);
 
             // 左右のバーを生成
-            (_leftFill, _leftFlashOverlay, _leftLabel) = CreateSideBar(canvasRT, layer, isLeft: true);
-            (_rightFill, _rightFlashOverlay, _rightLabel) = CreateSideBar(canvasRT, layer, isLeft: false);
+            (_leftFill, _leftFlashOverlay, _leftLabel, _leftPPLabel) = CreateSideBar(canvasRT, layer, isLeft: true);
+            (_rightFill, _rightFlashOverlay, _rightLabel, _rightPPLabel) = CreateSideBar(canvasRT, layer, isLeft: false);
             _debugLabel = CreateDebugLabel(canvasRT, layer);
+            _totalLabel = CreateTotalLabel(canvasRT, layer);
             CreateCenterBar(canvasRT, layer);
 
             // フラッシュのフェードアウトはUpdate()で毎フレーム処理する必要があるため
             // MonoBehaviourをアタッチしてTickFlash()を呼ばせる
             _canvasObject.AddComponent<DisplayTicker>().Controller = this;
 
+            ApplyVisibility(); // 設定の表示ON/OFFを反映
             UpdateDisplay(); // 初期表示
+        }
+
+        // 各要素（精度バー/平均点数バー/合算ラベル）の表示ON/OFFを設定に従って反映する。
+        // 要素自体は常に生成し（UpdateDisplayのnull参照を避けるため）、GameObjectのactiveで出し分ける。
+        private void ApplyVisibility()
+        {
+            bool acc = _config.ShowAccBar;
+            SetActive(_leftFill?.transform.parent, acc);   // bg（fill・目盛り線を含む）
+            SetActive(_rightFill?.transform.parent, acc);
+            SetActive(_leftFlashOverlay?.transform, acc);
+            SetActive(_rightFlashOverlay?.transform, acc);
+            SetActive(_leftLabel?.transform, acc);
+            SetActive(_rightLabel?.transform, acc);
+            SetActive(_leftPPLabel?.transform, acc);
+            SetActive(_rightPPLabel?.transform, acc);
+
+            bool score = _config.ShowScoreBar;
+            SetActive(_leftCutFill?.transform.parent, score);
+            SetActive(_rightCutFill?.transform.parent, score);
+            SetActive(_leftCutLabel?.transform, score);
+            SetActive(_rightCutLabel?.transform, score);
+
+            SetActive(_totalLabel?.transform, _config.ShowTotalLabel);
+        }
+
+        private static void SetActive(Transform? t, bool active)
+        {
+            if (t != null) t.gameObject.SetActive(active);
         }
 
         // ─── デバッグラベルの生成 ──────────────────────────────────────────────────
@@ -324,6 +359,36 @@ namespace LRCounter.Controllers
             tmp.alignment = TextAlignmentOptions.Center;
             // enableWordWrapping は新しいBeat Saber(TMPro)では非推奨だが、1.40.8には後継の
             // textWrappingMode が無いためこちらを使用。バージョン差の警告を局所的に抑制する。
+#pragma warning disable CS0618
+            tmp.enableWordWrapping = false;
+#pragma warning restore CS0618
+            tmp.overflowMode = TextOverflowModes.Overflow;
+            return tmp;
+        }
+
+        // ─── 合算ラベルの生成 ──────────────────────────────────────────────────────
+
+        // 左右合計の精度・PPを中央上部に表示する。位置(中心X/下端Y)・フォントサイズは設定で可変。
+        private TMP_Text CreateTotalLabel(RectTransform canvasRT, int layer)
+        {
+            var go = new GameObject("LRTotal");
+            go.layer = layer;
+            var rt = go.AddComponent<RectTransform>();
+            rt.SetParent(canvasRT, false);
+            // 中心Xを基準に左右へ広め(±0.25)に取り、中央寄せ＋オーバーフローで実際の文字幅に依存しない
+            float x = _config.TotalLabelX;
+            float y = _config.TotalLabelY;
+            rt.anchorMin = new Vector2(x - 0.25f, y);
+            rt.anchorMax = new Vector2(x + 0.25f, y + 0.08f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            tmp.text = "";
+            tmp.color = Color.yellow;                 // PP・%とも黄色
+            tmp.fontSize = Mathf.Max(_config.TotalLabelSize, 1f);
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.lineSpacing = -30f;                   // PPと%の行間を詰める
 #pragma warning disable CS0618
             tmp.enableWordWrapping = false;
 #pragma warning restore CS0618
@@ -423,8 +488,8 @@ namespace LRCounter.Controllers
 
         // ─── 左右バーのUI要素を生成 ────────────────────────────────────────────────
 
-        // 戻り値: (塗りつぶし画像, フラッシュオーバーレイ, ラベルテキスト)
-        private (Image fill, Image flashOverlay, TMP_Text label) CreateSideBar(
+        // 戻り値: (塗りつぶし画像, フラッシュオーバーレイ, %ラベル, PPラベル)
+        private (Image fill, Image flashOverlay, TMP_Text label, TMP_Text ppLabel) CreateSideBar(
             RectTransform canvasRT, int layer, bool isLeft)
         {
             Color color = isLeft ? _leftColor : _rightColor;
@@ -519,9 +584,29 @@ namespace LRCounter.Controllers
 #pragma warning restore CS0618
             label.overflowMode = TextOverflowModes.Overflow;
 
+            // --- PPラベル（%ラベルのさらに上に数値だけ表示） ---
+            var ppGO = new GameObject($"LRPP_{side}");
+            ppGO.layer = layer;
+            var ppRT = ppGO.AddComponent<RectTransform>();
+            ppRT.SetParent(canvasRT, false);
+            ppRT.anchorMin = new Vector2(barXMin, barTop + BarLabelHeight);      // %ラベルの1段上
+            ppRT.anchorMax = new Vector2(barXMax, barTop + BarLabelHeight * 2f);
+            ppRT.offsetMin = Vector2.zero;
+            ppRT.offsetMax = Vector2.zero;
+#pragma warning disable CS0618
+            var ppLabel = BeatSaberUI.CreateText(ppRT, "", Vector2.zero);
+#pragma warning restore CS0618
+            ppLabel.color = color;
+            ppLabel.fontSize = Mathf.Max(_config.TextSize, 2f);
+            ppLabel.alignment = TextAlignmentOptions.Center;
+#pragma warning disable CS0618
+            ppLabel.enableWordWrapping = false;
+#pragma warning restore CS0618
+            ppLabel.overflowMode = TextOverflowModes.Overflow;
+
             // 前面化は Canvas ルートをワールドZで手前に出すことで一括して行う（個別のZ押し出しは廃止）
 
-            return (fill, flashImg, label);
+            return (fill, flashImg, label, ppLabel);
         }
 
         // 目盛り線の色を精度(%)ごとに決める。95%=黒で強調 / 98%=オレンジ / 99%=赤 / それ以外=通常(半透明白)
@@ -604,6 +689,23 @@ namespace LRCounter.Controllers
             _leftLabel!.color = BrighterLabelColor(leftBarColor);
             _rightLabel!.color = BrighterLabelColor(rightBarColor);
 
+            // %ラベルの上にPPを表示（小数1桁＋末尾PP）。アンランク(StarRating<=0)なら "---"
+            bool hasStar = _trackerService.StarRating > 0;
+            _leftPPLabel!.text = hasStar ? $"{_trackerService.LeftTracker.PP:F1}PP" : "---";
+            _rightPPLabel!.text = hasStar ? $"{_trackerService.RightTracker.PP:F1}PP" : "---";
+            _leftPPLabel!.color = BrighterLabelColor(leftBarColor);
+            _rightPPLabel!.color = BrighterLabelColor(rightBarColor);
+
+            // 中央上部の合算ラベル：上段にPP(白)、下段に%(黄・小さめ)。アンランクなら%のみ
+            if (_totalLabel != null)
+            {
+                double totalAccPct = _trackerService.TotalAccuracy * 100.0;
+                string accLine = $"{totalAccPct:F2}%";
+                _totalLabel.text = hasStar
+                    ? $"{_trackerService.TotalPP:F1}PP\n{accLine}"
+                    : accLine;
+            }
+
             // デバッグ：直前ノーツの生スコアと現在倍率を表示
             if (_debugLabel != null)
             {
@@ -622,8 +724,10 @@ namespace LRCounter.Controllers
                 bool scoreMatches = calcScore == gameScore;
 
                 double totalAcc = _trackerService.TotalAccuracy * 100.0;
+                double totalPP = _trackerService.TotalPP;
+                double star = _trackerService.StarRating;
                 _debugLabel.text =
-                    $"{totalAcc:F2}% L:{lScore}  R:{rScore}  x{mult}\n" +
+                    $"{totalAcc:F2}%  {totalPP:F1}pp  ★{star:F2}  L:{lScore}  R:{rScore}  x{mult}\n" +
                     $"{calcScore}：({gameScore}) /{_trackerService.TotalMaxScore}";
                 // 一致=通常色(黄)、不一致=赤。検算が合っているか一目で分かるようにする。
                 _debugLabel.color = scoreMatches ? Color.yellow : Color.red;
