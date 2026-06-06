@@ -27,11 +27,7 @@ namespace LRCounter.Controllers
         public bool Enabled
         {
             get => _config.Enabled;
-            set
-            {
-                _config.Enabled = value;
-                _config.Changed();
-            }
+            set { _config.Enabled = value; _config.Changed(); }
         }
 
         // ———— MinStarRating ————
@@ -39,11 +35,7 @@ namespace LRCounter.Controllers
         public float MinStarRating
         {
             get => _config.MinStarRating;
-            set
-            {
-                _config.MinStarRating = value;
-                _config.Changed();
-            }
+            set { _config.MinStarRating = value; _config.Changed(); }
         }
 
         // ———— TextSize ————
@@ -51,11 +43,7 @@ namespace LRCounter.Controllers
         public float TextSize
         {
             get => _config.TextSize;
-            set
-            {
-                _config.TextSize = value;
-                _config.Changed();
-            }
+            set { _config.TextSize = value; _config.Changed(); }
         }
 
         // ———— ShowTotalPP ————
@@ -63,11 +51,7 @@ namespace LRCounter.Controllers
         public bool ShowTotalPP
         {
             get => _config.ShowTotalPP;
-            set
-            {
-                _config.ShowTotalPP = value;
-                _config.Changed();
-            }
+            set { _config.ShowTotalPP = value; _config.Changed(); }
         }
 
         // ———— DecimalPlaces ————
@@ -75,11 +59,7 @@ namespace LRCounter.Controllers
         public int DecimalPlaces
         {
             get => _config.DecimalPlaces;
-            set
-            {
-                _config.DecimalPlaces = value;
-                _config.Changed();
-            }
+            set { _config.DecimalPlaces = value; _config.Changed(); }
         }
 
         // ———— Left Hand Color ————
@@ -87,11 +67,7 @@ namespace LRCounter.Controllers
         public string LeftHandColor
         {
             get => _config.LeftHandColor;
-            set
-            {
-                _config.LeftHandColor = value;
-                _config.Changed();
-            }
+            set { _config.LeftHandColor = value; _config.Changed(); }
         }
 
         // ———— Right Hand Color ————
@@ -99,35 +75,7 @@ namespace LRCounter.Controllers
         public string RightHandColor
         {
             get => _config.RightHandColor;
-            set
-            {
-                _config.RightHandColor = value;
-                _config.Changed();
-            }
-        }
-
-        // ———— Position X ————
-        [UIValue("pos-x")]
-        public float PosX
-        {
-            get => _config.PosX;
-            set
-            {
-                _config.PosX = value;
-                _config.Changed();
-            }
-        }
-
-        // ———— Position Y ————
-        [UIValue("pos-y")]
-        public float PosY
-        {
-            get => _config.PosY;
-            set
-            {
-                _config.PosY = value;
-                _config.Changed();
-            }
+            set { _config.RightHandColor = value; _config.Changed(); }
         }
 
         // ———— Manual Star Rating ————
@@ -135,11 +83,87 @@ namespace LRCounter.Controllers
         public float ManualStarRating
         {
             get => _config.ManualStarRating;
-            set
-            {
-                _config.ManualStarRating = value;
-                _config.Changed();
-            }
+            set { _config.ManualStarRating = value; _config.Changed(); }
+        }
+
+        // ———— Shared depth ————
+        [UIValue("depth-z")]
+        public float DepthZ
+        {
+            get => _config.DepthZ;
+            set { _config.DepthZ = value; _config.Changed(); }
+        }
+
+        // ———— Accuracy bar layout ————
+        [UIValue("acc-left-x")]
+        public float AccBarLeftX
+        {
+            get => _config.AccBarLeftX;
+            set { _config.AccBarLeftX = value; _config.Changed(); }
+        }
+
+        [UIValue("acc-right-x")]
+        public float AccBarRightX
+        {
+            get => _config.AccBarRightX;
+            set { _config.AccBarRightX = value; _config.Changed(); }
+        }
+
+        [UIValue("acc-y")]
+        public float AccBarY
+        {
+            get => _config.AccBarY;
+            set { _config.AccBarY = value; _config.Changed(); }
+        }
+
+        [UIValue("acc-height")]
+        public float AccBarHeight
+        {
+            get => _config.AccBarHeight;
+            set { _config.AccBarHeight = value; _config.Changed(); }
+        }
+
+        [UIValue("acc-width")]
+        public float AccBarWidth
+        {
+            get => _config.AccBarWidth;
+            set { _config.AccBarWidth = value; _config.Changed(); }
+        }
+
+        // ———— Score bar layout ————
+        [UIValue("score-left-x")]
+        public float ScoreBarLeftX
+        {
+            get => _config.ScoreBarLeftX;
+            set { _config.ScoreBarLeftX = value; _config.Changed(); }
+        }
+
+        [UIValue("score-right-x")]
+        public float ScoreBarRightX
+        {
+            get => _config.ScoreBarRightX;
+            set { _config.ScoreBarRightX = value; _config.Changed(); }
+        }
+
+        [UIValue("score-y")]
+        public float ScoreBarY
+        {
+            get => _config.ScoreBarY;
+            set { _config.ScoreBarY = value; _config.Changed(); }
+        }
+
+        [UIValue("score-height")]
+        public float ScoreBarHeight
+        {
+            get => _config.ScoreBarHeight;
+            set { _config.ScoreBarHeight = value; _config.Changed(); }
+        }
+
+        [UIValue("score-width")]
+        public float ScoreBarWidth
+        {
+            get => _config.ScoreBarWidth;
+            set { _config.ScoreBarWidth = value; _config.Changed(); }
         }
 
         // ———— Reset Button ————
@@ -148,16 +172,25 @@ namespace LRCounter.Controllers
         {
             _config.Enabled = true;
             _config.MinStarRating = 0f;
-            _config.TextSize = 4f;
+            _config.TextSize = 3f;
             _config.ShowTotalPP = true;
             _config.DecimalPlaces = 2;
             _config.LeftHandColor = "#FF5555";
             _config.RightHandColor = "#5555FF";
-            _config.PosX = 0f;
-            _config.PosY = -300f;
-            _config.PosZ = 0f;
             _config.ManualStarRating = 0f;
+            _config.DepthZ = 3f;
+            _config.AccBarLeftX = 0.385f;
+            _config.AccBarRightX = 0.615f;
+            _config.AccBarY = 0.35f;
+            _config.AccBarHeight = 0.50f;
+            _config.AccBarWidth = 0.01f;
+            _config.ScoreBarLeftX = 0.405f;
+            _config.ScoreBarRightX = 0.595f;
+            _config.ScoreBarY = 0.45f;
+            _config.ScoreBarHeight = 0.27f;
+            _config.ScoreBarWidth = 0.01f;
             _config.Changed();
+
             NotifyPropertyChanged(nameof(Enabled));
             NotifyPropertyChanged(nameof(MinStarRating));
             NotifyPropertyChanged(nameof(TextSize));
@@ -165,9 +198,18 @@ namespace LRCounter.Controllers
             NotifyPropertyChanged(nameof(DecimalPlaces));
             NotifyPropertyChanged(nameof(LeftHandColor));
             NotifyPropertyChanged(nameof(RightHandColor));
-            NotifyPropertyChanged(nameof(PosX));
-            NotifyPropertyChanged(nameof(PosY));
             NotifyPropertyChanged(nameof(ManualStarRating));
+            NotifyPropertyChanged(nameof(DepthZ));
+            NotifyPropertyChanged(nameof(AccBarLeftX));
+            NotifyPropertyChanged(nameof(AccBarRightX));
+            NotifyPropertyChanged(nameof(AccBarY));
+            NotifyPropertyChanged(nameof(AccBarHeight));
+            NotifyPropertyChanged(nameof(AccBarWidth));
+            NotifyPropertyChanged(nameof(ScoreBarLeftX));
+            NotifyPropertyChanged(nameof(ScoreBarRightX));
+            NotifyPropertyChanged(nameof(ScoreBarY));
+            NotifyPropertyChanged(nameof(ScoreBarHeight));
+            NotifyPropertyChanged(nameof(ScoreBarWidth));
             Plugin.Log.Info("Settings reset to defaults.");
         }
     }

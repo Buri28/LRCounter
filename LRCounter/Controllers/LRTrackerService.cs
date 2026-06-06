@@ -40,10 +40,23 @@ namespace LRCounter.Controllers
         public double ThresholdPP { get; private set; } = 0; // ランクアップに必要な最低PP
         public double PlayerTotalPP { get; private set; } = 0; // ScoreSaberに登録されているプレイヤーの現在合計PP
 
-        // 両手合算スコア（倍率込み）
-        public int TotalScore => _totalScore;
-        public int TotalMaxScore => _maxTotalScore;
+        // NF(ノーフェイル)で失敗すると、ゲームはスコアと最大スコアの両方を半減する（精度%は不変・スコアだけ半分）。
+        // 失敗時点で削るのではなく、成立後に全体へ係数を掛けて再現する。通常1.0、NF失敗後0.5。
+        private float _scoreFactor = 1f;
+
+        // 両手合算スコア（倍率込み）。NF失敗時は係数0.5で全体を半減（最大も半減するので精度は不変）。
+        public int TotalScore => (int)(_totalScore * _scoreFactor);
+        public int TotalMaxScore => (int)(_maxTotalScore * _scoreFactor);
+        // 精度は生の集計比なので係数の影響を受けない（分子・分母とも同じ係数で打ち消される）。
         public double TotalAccuracy => _maxTotalScore > 0 ? (double)_totalScore / _maxTotalScore : 0;
+
+        // ゲーム本体が確定させたスコア。scoreDidChangeEvent で最新値を受け取って保持する。
+        // （scoringForNoteFinishedEvent 内で直読みすると全ノーツ処理前＝1ノーツ前の値になるため）
+        // multipliedScore = 倍率込み・修飾前（生）。modifiedScore = NF・譜面修飾込みの実表示スコア。
+        private int _gameMultipliedScore = 0;
+        private int _gameModifiedScore = 0;
+        public int GameMultipliedScore => _gameMultipliedScore;
+        public int GameModifiedScore => _gameModifiedScore;
 
         // ノーツを切るたびに発火。DisplayControllerが購読して表示を更新する
         public event Action? OnPPUpdated;
@@ -75,6 +88,9 @@ namespace LRCounter.Controllers
 
             // ノーツ判定完了イベントを購読（倍率は各ノーツのscoringElementから取得する）
             _scoreController.scoringForNoteFinishedEvent += OnScoringForNoteFinished;
+            // スコア確定イベントを購読。multipliedScore はノーツ確定イベントの後で更新されるため、
+            // 検算用のゲームスコアはこちらの最新値で受け取る（直読みだと1ノーツ前の値になる）。
+            _scoreController.scoreDidChangeEvent += OnScoreDidChange;
             // 体力変化イベントを購読してエネルギーが0になったらペナルティを適用
             _energyCounter.gameEnergyDidChangeEvent += OnEnergyChanged;
             Plugin.Log.Info("[LRCounter] Subscribed to scoringForNoteFinishedEvent / gameEnergyDidChangeEvent");
@@ -110,6 +126,7 @@ namespace LRCounter.Controllers
         public void Dispose()
         {
             _scoreController.scoringForNoteFinishedEvent -= OnScoringForNoteFinished;
+            _scoreController.scoreDidChangeEvent -= OnScoreDidChange;
             _energyCounter.gameEnergyDidChangeEvent -= OnEnergyChanged;
             GC.SuppressFinalize(this);
         }
@@ -278,19 +295,27 @@ namespace LRCounter.Controllers
             OnPPUpdated?.Invoke();
         }
 
+        // ゲームのスコアが確定（再計算）されたタイミングで呼ばれる。multipliedScore はこの時点で
+        // 今切ったノーツまで反映済みなので、検算用のゲームスコアをここで最新値に更新する。
+        // 更新後に表示も更新させ、デバッグ表示が1ノーツ前の値を出さないようにする。
+        private void OnScoreDidChange(int multipliedScore, int modifiedScore)
+        {
+            _gameMultipliedScore = multipliedScore;
+            _gameModifiedScore = modifiedScore;
+            OnPPUpdated?.Invoke();
+        }
+
         // ─── ノーフェイルペナルティ ────────────────────────────────────────────────
 
-        // 体力変化イベント：0になった瞬間に1回だけスコアを半減する
+        // 体力変化イベント：0になった瞬間に1回だけ係数を0.5にする。
+        // 生の集計(_totalScore/_maxTotalScore)は変えず、読み出し時に全体へ0.5を掛けて
+        // ゲームのNF挙動（スコアも最大も半減＝精度は不変）を再現する。
         private void OnEnergyChanged(float energy)
         {
             if (energy > 0 || _penaltyApplied) return;
             _penaltyApplied = true;
-
-            const float penalty = 0.5f;
-            _totalScore = (int)(_totalScore * penalty);
-            LeftTracker.ApplyPenalty(penalty);
-            RightTracker.ApplyPenalty(penalty);
-            Plugin.Log.Info("[LRCounter] No Fail penalty: scores halved.");
+            _scoreFactor = 0.5f;
+            Plugin.Log.Info("[LRCounter] No Fail: score factor set to 0.5 (score & max halved, accuracy unchanged).");
             OnPPUpdated?.Invoke();
         }
     }
