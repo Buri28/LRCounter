@@ -60,7 +60,7 @@ namespace LRCounter.Controllers
         private const float GridLineHalfHeight = 0.1f;      // 目盛り線の半分の高さ（Canvas論理単位、全線共通。細め）
         private static readonly Color GridLineColor = new Color(1f, 1f, 1f, 0.45f); // 通常の目盛り線の色（半透明白）
         private static readonly Color GridLineColorBold = new Color(0f, 0f, 0f, 1f); // 強調線の色（不透明黒）
-        private static readonly int[] EmphasizedPercents = { 95, 98 }; // 別色（黒）で強調する目盛りの精度(%)
+        // 特定の精度の目盛り線を専用色で強調する: 95%=黒 / 98%=オレンジ / 99%=赤。色は GridLineColorFor() で決定。
 
         // 精度バーが表示する精度の範囲(%)。下端=AccDisplayMin、上端=AccDisplayMax にマッピングする
         private const double AccDisplayMin = 90.0;
@@ -119,16 +119,14 @@ namespace LRCounter.Controllers
             new ColorBand(114, 115, new[] { ColMagentaDark, ColMagentaBright }),  // 114: マゼンタ徐々に明
         };
 
-        // 精度バーの縦範囲(Canvas高さ比)。bg・flash・%ラベルが共通で参照する。
-        // BarBottom=下端（下げすぎると画面外に見切れる）、BarTop=上端（1.0超でCanvas外＝空まで伸びる）
-        private const float BarBottom = 0.50f;
-        private const float BarTop = 1.25f;
-        private const float BarLabelHeight = 0.05f; // %ラベルの高さ（バー上端からこのぶん上に置く）
+        // バー位置・サイズ・奥行きは PluginConfig（Mods設定）から取得する。ここはラベル等の派生寸法のみ。
+        private const float BarLabelHeight = 0.05f;   // 精度バー%ラベルの高さ（バー上端からこのぶん上に置く）
+        private const float CutLabelGap = 0.0f;       // 平均点数ラベルとバー上端の隙間
+        private const float CutLabelHeight = 0.05f;   // 平均点数ラベルの高さ（バー上端のすぐ上に置く）
+        private const float CutLabelHalfWidth = 0.06f; // 平均点数ラベルの半幅
 
-        // 中央バーを少し手前（プレイヤー側）に出すローカルZオフセット（負=手前）
-        private const float CenterBarForwardZ = -6f;
-        // サイドバー（背景・%ラベル）を手前に出して背景の3Dオブジェクトに隠れないようにする
-        private const float SideBarForwardZ = -6f;
+        // Canvasの基準Yオフセット(ワールド単位)。ゲームHUDのCanvas位置からこのぶん上にずらす。
+        private const float CanvasBaseYOffset = 1.3f;
 
         [Inject]
         public LRDisplayController(
@@ -273,12 +271,15 @@ namespace LRCounter.Controllers
             canvas.overrideSorting = true;
 
             Plugin.Log.Info($"[LRCounter] refPos={refPos}  refScale={refScale}  sortingLayer={canvas.sortingLayerName}");
+            // Z はワールド座標でカメラ側へ DepthZ ぶん寄せて前面化する（傾きの影響を受けず高さは不変）。
+            // X/Y のオフセットは廃止し、バーごとの個別設定（Canvas内アンカー）で位置を決める。
             _canvasObject.transform.position = new Vector3(
-                refPos.x + _config.PosX,
-                refPos.y + 1.3f + _config.PosY,
-                refPos.z + _config.PosZ);
+                refPos.x,
+                refPos.y + CanvasBaseYOffset,
+                refPos.z - _config.DepthZ);
             _canvasObject.transform.rotation = refRot;
-            // ゲームHUDのスケールをそのまま使うと小さすぎるため3倍に拡大
+            // ゲームHUDのスケールをそのまま使うと小さすぎるため3倍に拡大。
+            // （DepthZ で近づけたぶんは遠近で素直に拡大して見える＝Zが見た目の奥行きとして効く）
             _canvasObject.transform.localScale = refScale * 3f;
 
             // Canvasの論理サイズ（200×100）。anchorで割合指定するので実際の見た目に影響する
@@ -308,9 +309,9 @@ namespace LRCounter.Controllers
             go.layer = layer;
             var rt = go.AddComponent<RectTransform>();
             rt.SetParent(canvasRT, false);
-            // バーラベル(Y 0.85〜1.00)の下に配置（やや下げて余白を確保）
-            rt.anchorMin = new Vector2(0.00f, 0.48f);
-            rt.anchorMax = new Vector2(1.00f, 0.65f);
+            // バーより下に配置（Yを下げるほど画面の下側へ。0=Canvas下端 / 1=上端）
+            rt.anchorMin = new Vector2(0.00f, 0.28f);
+            rt.anchorMax = new Vector2(1.00f, 0.45f);
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
 
@@ -319,7 +320,7 @@ namespace LRCounter.Controllers
             var tmp = go.AddComponent<TextMeshProUGUI>();
             tmp.text = "";
             tmp.color = Color.yellow;
-            tmp.fontSize = 6f;
+            tmp.fontSize = 3f;
             tmp.alignment = TextAlignmentOptions.Center;
             // enableWordWrapping は新しいBeat Saber(TMPro)では非推奨だが、1.40.8には後継の
             // textWrappingMode が無いためこちらを使用。バージョン差の警告を局所的に抑制する。
@@ -336,13 +337,15 @@ namespace LRCounter.Controllers
         // グッドカットの平均生スコア(111〜115)を「下から上への塗り量」で表す。上ほど高得点。
         private void CreateCenterBar(RectTransform canvasRT, int layer)
         {
-            // 左右の精度バー(左0.33-0.34 / 右0.66-0.67)の内側すぐ隣に細い縦バーを配置する
-            _leftCutFill = CreateCutBar(canvasRT, layer, "L", 0.35f, 0.36f);
-            _rightCutFill = CreateCutBar(canvasRT, layer, "R", 0.64f, 0.65f);
+            // 左右バーの中心X・幅は設定から取得（左右独立）。ラベルは各バーの中心に合わせる。
+            float barL = _config.ScoreBarLeftX, barR = _config.ScoreBarRightX;
+            float halfW = _config.ScoreBarWidth * 0.5f;
+            _leftCutFill = CreateCutBar(canvasRT, layer, "L", barL - halfW, barL + halfW);
+            _rightCutFill = CreateCutBar(canvasRT, layer, "R", barR - halfW, barR + halfW);
 
             // 平均点数（数字・小数1桁）を各バーの上に表示（各バーの中心に合わせる）
-            _leftCutLabel = CreateCutLabel(canvasRT, layer, "L", 0.31f, 0.43f, _leftColor);
-            _rightCutLabel = CreateCutLabel(canvasRT, layer, "R", 0.57f, 0.69f, _rightColor);
+            _leftCutLabel = CreateCutLabel(canvasRT, layer, "L", barL - CutLabelHalfWidth, barL + CutLabelHalfWidth, _leftColor);
+            _rightCutLabel = CreateCutLabel(canvasRT, layer, "R", barR - CutLabelHalfWidth, barR + CutLabelHalfWidth, _rightColor);
         }
 
         // 中央の平均点数バー（背景＋下から伸びる塗りつぶし）を1本生成し、塗りつぶしImageを返す。
@@ -354,16 +357,15 @@ namespace LRCounter.Controllers
             bgGO.layer = layer;
             var bgRT = bgGO.AddComponent<RectTransform>();
             bgRT.SetParent(canvasRT, false);
-            bgRT.anchorMin = new Vector2(xMin, 0.68f);
-            bgRT.anchorMax = new Vector2(xMax, 1.00f);
+            bgRT.anchorMin = new Vector2(xMin, _config.ScoreBarY);
+            bgRT.anchorMax = new Vector2(xMax, _config.ScoreBarY + _config.ScoreBarHeight);
             bgRT.offsetMin = Vector2.zero;
             bgRT.offsetMax = Vector2.zero;
             var bgImg = bgGO.AddComponent<Image>();
             bgImg.sprite = CreateWhiteSprite();
             bgImg.color = new Color(0f, 0f, 0f, 0.5f);
             ApplyNoGlow(bgImg);
-            // 少し手前（プレイヤー側）に出して背景の3Dオブジェクトに隠れないようにする
-            SetForwardZ(bgRT, CenterBarForwardZ);
+            // 前面化は Canvas ルートをワールドZで手前に出すことで一括して行うため、ここでの個別Z押し出しは不要
 
             // --- 塗りつぶし（平均点数に応じて下から上に伸びる）。BGの子にして範囲内に収める ---
             var fillGO = new GameObject($"LRCutBar_{side}_Fill");
@@ -402,14 +404,15 @@ namespace LRCounter.Controllers
             go.layer = layer;
             var rt = go.AddComponent<RectTransform>();
             rt.SetParent(canvasRT, false);
-            rt.anchorMin = new Vector2(xMin, 1.02f); // 縦列(上端1.00)の上に数字を出す
-            rt.anchorMax = new Vector2(xMax, 1.14f);
+            float scoreTop = _config.ScoreBarY + _config.ScoreBarHeight;
+            rt.anchorMin = new Vector2(xMin, scoreTop + CutLabelGap); // バー上端の少し上に数字を出す
+            rt.anchorMax = new Vector2(xMax, scoreTop + CutLabelGap + CutLabelHeight);
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
             var tmp = go.AddComponent<TextMeshProUGUI>();
             tmp.text = "";
             tmp.color = color;
-            tmp.fontSize = 5f;
+            tmp.fontSize = Mathf.Max(_config.TextSize, 2f);
             tmp.alignment = TextAlignmentOptions.Center;
 #pragma warning disable CS0618
             tmp.enableWordWrapping = false;
@@ -427,9 +430,13 @@ namespace LRCounter.Controllers
             Color color = isLeft ? _leftColor : _rightColor;
             string side = isLeft ? "L" : "R";
 
-            // Canvas幅の割合でバー位置を指定（中央寄せ：左=35〜36%、右=66〜67%）
-            float barXMin = isLeft ? 0.33f : 0.66f;
-            float barXMax = isLeft ? 0.34f : 0.67f;
+            // バーの中心X・幅・下端・高さは設定から取得（左右独立）。
+            float centerX = isLeft ? _config.AccBarLeftX : _config.AccBarRightX;
+            float halfW = _config.AccBarWidth * 0.5f;
+            float barXMin = centerX - halfW;
+            float barXMax = centerX + halfW;
+            float barBottom = _config.AccBarY;
+            float barTop = _config.AccBarY + _config.AccBarHeight;
 
             // --- 背景（暗い半透明の黒） ---
             var bgGO = new GameObject($"LRBar_{side}_BG");
@@ -437,8 +444,8 @@ namespace LRCounter.Controllers
             var bgRT = bgGO.AddComponent<RectTransform>();
             bgRT.SetParent(canvasRT, false);
             // ★見えるバーの下端・上端はここで決まる（フラッシュ/ラベルではなくこのbgが本体）
-            bgRT.anchorMin = new Vector2(barXMin, BarBottom);
-            bgRT.anchorMax = new Vector2(barXMax, BarTop);
+            bgRT.anchorMin = new Vector2(barXMin, barBottom);
+            bgRT.anchorMax = new Vector2(barXMax, barTop);
             bgRT.offsetMin = Vector2.zero;
             bgRT.offsetMax = Vector2.zero;
             var bgImg = bgGO.AddComponent<Image>();
@@ -472,11 +479,9 @@ namespace LRCounter.Controllers
             for (int i = 1; i < GridDivisions; i++)
             {
                 float frac = i / (float)GridDivisions;
-                // この線が表す精度(%)。EmphasizedPercents に含まれる線だけ別色（黒）で強調する。太さは全線共通。
+                // この線が表す精度(%)。特定の精度だけ専用色で強調する（GridLineColorFor）。太さは全線共通。
                 int pct = Mathf.RoundToInt((float)(AccDisplayMin + frac * (AccDisplayMax - AccDisplayMin)));
-                bool bold = EmphasizedPercents.Contains(pct);
-                CreateGridLine(bgRT, layer, side, i, frac, GridLineHalfHeight,
-                    bold ? GridLineColorBold : GridLineColor);
+                CreateGridLine(bgRT, layer, side, i, frac, GridLineHalfHeight, GridLineColorFor(pct));
             }
 
             // --- フラッシュオーバーレイ（精度低下時に赤く光る） ---
@@ -485,8 +490,8 @@ namespace LRCounter.Controllers
             flashGO.layer = layer;
             var flashRT = flashGO.AddComponent<RectTransform>();
             flashRT.SetParent(canvasRT, false);
-            flashRT.anchorMin = new Vector2(barXMin, BarBottom); // bgと同じ範囲にする（バー全体を覆う）
-            flashRT.anchorMax = new Vector2(barXMax, BarTop);
+            flashRT.anchorMin = new Vector2(barXMin, barBottom); // bgと同じ範囲にする（バー全体を覆う）
+            flashRT.anchorMax = new Vector2(barXMax, barTop);
             flashRT.offsetMin = Vector2.zero;
             flashRT.offsetMax = Vector2.zero;
             var flashImg = flashGO.AddComponent<Image>();
@@ -499,8 +504,8 @@ namespace LRCounter.Controllers
             labelGO.layer = layer;
             var labelRT = labelGO.AddComponent<RectTransform>();
             labelRT.SetParent(canvasRT, false);
-            labelRT.anchorMin = new Vector2(barXMin, BarTop); // バー上端の上に%ラベルを配置
-            labelRT.anchorMax = new Vector2(barXMax, BarTop + BarLabelHeight);
+            labelRT.anchorMin = new Vector2(barXMin, barTop); // バー上端の上に%ラベルを配置
+            labelRT.anchorMax = new Vector2(barXMax, barTop + BarLabelHeight);
             labelRT.offsetMin = Vector2.zero;
             labelRT.offsetMax = Vector2.zero;
 #pragma warning disable CS0618
@@ -514,13 +519,21 @@ namespace LRCounter.Controllers
 #pragma warning restore CS0618
             label.overflowMode = TextOverflowModes.Overflow;
 
-            // バー・フラッシュ・%ラベルをまとめて少し手前に出し、背景の3Dオブジェクトに隠れないようにする
-            // （fill は bg の子なので bg を動かせば一緒に手前へ来る）
-            SetForwardZ(bgRT, SideBarForwardZ);
-            SetForwardZ(flashRT, SideBarForwardZ);
-            SetForwardZ(labelRT, SideBarForwardZ);
+            // 前面化は Canvas ルートをワールドZで手前に出すことで一括して行う（個別のZ押し出しは廃止）
 
             return (fill, flashImg, label);
+        }
+
+        // 目盛り線の色を精度(%)ごとに決める。95%=黒で強調 / 98%=オレンジ / 99%=赤 / それ以外=通常(半透明白)
+        private static Color GridLineColorFor(int pct)
+        {
+            switch (pct)
+            {
+                case 95: return GridLineColorBold;
+                case 98: return ColOrange;
+                case 99: return ColRed;
+                default: return GridLineColor;
+            }
         }
 
         // 精度バーの目盛り横線を1本生成する（frac=0で下端=0%, 1で上端=100%）。halfHeightで太さ、colorで色を指定
@@ -539,14 +552,6 @@ namespace LRCounter.Controllers
             img.sprite = CreateWhiteSprite();
             img.color = color;
             ApplyNoGlow(img);
-        }
-
-        // RectTransform をローカルZ方向に移動して手前/奥に出す
-        private static void SetForwardZ(RectTransform rt, float z)
-        {
-            var p = rt.localPosition;
-            p.z = z;
-            rt.localPosition = p;
         }
 
         // 精度(%)を表示レンジ(AccDisplayMin〜Max)で正規化して塗りつぶし量(0〜1)に変換する
@@ -607,13 +612,21 @@ namespace LRCounter.Controllers
                 int mult = _trackerService.CurrentMultiplier;
 
                 // LastCutScore が -1 のときはまだそちらの手でカットしていない
-                string lScore = L.LastCutScore >= 0 ? $"{L.LastCutScore}/115" : "---/115";
-                string rScore = R.LastCutScore >= 0 ? $"{R.LastCutScore}/115" : "---/115";
+                string lScore = L.LastCutScore >= 0 ? $"{L.LastCutScore}" : "---";
+                string rScore = R.LastCutScore >= 0 ? $"{R.LastCutScore}" : "---";
+
+                // 自前集計スコア（NF係数込み）とゲームの実表示スコア(modifiedScore)を突き合わせる。
+                // 食い違ったら集計ズレなので赤字にする。
+                int calcScore = _trackerService.TotalScore;
+                int gameScore = _trackerService.GameModifiedScore;
+                bool scoreMatches = calcScore == gameScore;
 
                 double totalAcc = _trackerService.TotalAccuracy * 100.0;
                 _debugLabel.text =
-                    $"L:{lScore}  R:{rScore}  x{mult}\n" +
-                    $"Acc:{totalAcc:F2}%  Total:{_trackerService.TotalScore}/{_trackerService.TotalMaxScore}";
+                    $"{totalAcc:F2}% L:{lScore}  R:{rScore}  x{mult}\n" +
+                    $"{calcScore}：({gameScore}) /{_trackerService.TotalMaxScore}";
+                // 一致=通常色(黄)、不一致=赤。検算が合っているか一目で分かるようにする。
+                _debugLabel.color = scoreMatches ? Color.yellow : Color.red;
             }
 
             // 中央バー：グッドカットの平均点数を塗り量・色・数字(小数1桁)で更新する

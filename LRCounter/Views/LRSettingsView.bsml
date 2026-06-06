@@ -1,140 +1,143 @@
-<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
-   xsi:noNamespaceSchemaLocation='https://raw.githubusercontent.com/nicoco007/BeatSaberMarkupLanguage/main/Schema/bsml.xsd'>
+<bg>
+  <settings-container child-control-width='true' child-expand-width='true' spacing='0' pad='0'>
 
-  <vertical child-expand-width='true' child-control-height='true' spacing='1' pad='3'>
-
-    <!-- ヘッダー -->
-    <horizontal>
-      <text text='LRCounter' font-size='5' align='Center' bold='true' color='#FFFFFF' />
+    <!-- Header -->
+    <horizontal spacing='1' pad='0' pad-top='1'>
+      <text text='LRCounter' font-size='5' color='#FFFFFF' />
     </horizontal>
 
-    <horizontal>
-      <text text='左右それぞれのPPをリアルタイム表示します' font-size='3' align='Center' color='#AAAAAA' />
+    <toggle-setting text='Enabled'
+                    value='enabled'
+                    apply-on-change='true'
+                    hover-hint='Enable or disable the mod.' />
+
+    <!-- ───────── Common ───────── -->
+    <horizontal spacing='1' pad='0' pad-top='1'>
+      <text text='[Common]' color='#00FFFF' />
     </horizontal>
 
-    <!-- 区切り線 -->
-    <horizontal preferred-height='0.5' bg='round-rect-panel' bg-color='#444444' />
+    <slider-setting text='Depth (Z)'
+                    value='depth-z'
+                    apply-on-change='true'
+                    min='-1' max='8' increment='0.1'
+                    hover-hint='How far the whole display is pulled toward the player (meters). Larger = closer / bigger / in front of 3D objects.' />
 
-    <!-- Enabled -->
-    <horizontal>
-      <toggle-setting text='Enabled'
-                      value='enabled'
-                      apply-on-change='true'
-                      hover-hint='MODの有効/無効を切り替えます' />
+    <slider-setting text='Text Size'
+                    value='text-size'
+                    apply-on-change='true'
+                    min='2' max='30' increment='1'
+                    hover-hint='Font size of the labels.' />
+
+    <toggle-setting text='Show Total PP'
+                    value='show-total'
+                    apply-on-change='true'
+                    hover-hint='Also show the combined PP value.' />
+
+    <slider-setting text='Decimal Places'
+                    value='decimal-places'
+                    apply-on-change='true'
+                    min='0' max='4' increment='1'
+                    integer-only='true'
+                    hover-hint='Number of decimal places for PP.' />
+
+    <slider-setting text='Min Star Rating'
+                    value='min-star'
+                    apply-on-change='true'
+                    min='0' max='20' increment='0.5'
+                    hover-hint='Only show on maps at or above this star rating (0 = always).' />
+
+    <slider-setting text='Manual Star Rating'
+                    value='manual-star'
+                    apply-on-change='true'
+                    min='0' max='20' increment='0.1'
+                    hover-hint='Manually set the star rating used for PP calculation (0 = hide PP).' />
+
+    <string-setting text='Left Hand Color'
+                    value='left-color'
+                    apply-on-change='true'
+                    hover-hint='Left hand color as an HTML hex code (e.g. #FF5555).' />
+
+    <string-setting text='Right Hand Color'
+                    value='right-color'
+                    apply-on-change='true'
+                    hover-hint='Right hand color as an HTML hex code (e.g. #5555FF).' />
+
+    <!-- ───────── Accuracy Bar (outer) ───────── -->
+    <horizontal spacing='1' pad='0' pad-top='1'>
+      <text text='[Accuracy Bar]' color='#88CCFF' />
     </horizontal>
 
-    <!-- MinStarRating -->
-    <horizontal>
-      <slider-setting text='最低Star評価'
-                      value='min-star'
-                      apply-on-change='true'
-                      min='0' max='20' increment='0.5'
-                      hover-hint='指定したStar評価以上の譜面でのみ表示します（0=常に表示）' />
+    <slider-setting text='Left X'
+                    value='acc-left-x'
+                    apply-on-change='true'
+                    min='0' max='1' increment='0.005'
+                    hover-hint='Horizontal center of the left accuracy bar (0=left edge, 0.5=center, 1=right edge).' />
+
+    <slider-setting text='Right X'
+                    value='acc-right-x'
+                    apply-on-change='true'
+                    min='0' max='1' increment='0.005'
+                    hover-hint='Horizontal center of the right accuracy bar.' />
+
+    <slider-setting text='Y (Bottom)'
+                    value='acc-y'
+                    apply-on-change='true'
+                    min='-0.5' max='1.5' increment='0.01'
+                    hover-hint='Vertical position of the bar bottom (higher = upper).' />
+
+    <slider-setting text='Height'
+                    value='acc-height'
+                    apply-on-change='true'
+                    min='0.05' max='1.5' increment='0.01'
+                    hover-hint='Bar height.' />
+
+    <slider-setting text='Width'
+                    value='acc-width'
+                    apply-on-change='true'
+                    min='0.01' max='0.1' increment='0.01'
+                    hover-hint='Bar width (thickness).' />
+
+    <!-- ───────── Score Bar (inner) ───────── -->
+    <horizontal spacing='1' pad='0' pad-top='1'>
+      <text text='[Score Bar]' color='#FF99DD' />
     </horizontal>
 
-    <!-- TextSize -->
-    <horizontal>
-      <slider-setting text='テキストサイズ'
-                      value='text-size'
-                      apply-on-change='true'
-                      min='5' max='30' increment='1'
-                      hover-hint='HUDに表示するテキストのサイズを変更します' />
-    </horizontal>
+    <slider-setting text='Left X'
+                    value='score-left-x'
+                    apply-on-change='true'
+                    min='0' max='1' increment='0.005'
+                    hover-hint='Horizontal center of the left score bar.' />
 
-    <!-- DecimalPlaces -->
-    <horizontal>
-      <slider-setting text='小数点以下桁数'
-                      value='decimal-places'
-                      apply-on-change='true'
-                      min='0' max='4' increment='1'
-                      integer-only='true'
-                      hover-hint='PPの小数点以下の表示桁数' />
-    </horizontal>
+    <slider-setting text='Right X'
+                    value='score-right-x'
+                    apply-on-change='true'
+                    min='0' max='1' increment='0.005'
+                    hover-hint='Horizontal center of the right score bar.' />
 
-    <!-- ShowTotalPP -->
-    <horizontal>
-      <toggle-setting text='合計PPを表示'
-                      value='show-total'
-                      apply-on-change='true'
-                      hover-hint='左右PPの合計値も表示します' />
-    </horizontal>
+    <slider-setting text='Y (Bottom)'
+                    value='score-y'
+                    apply-on-change='true'
+                    min='-0.5' max='1.5' increment='0.01'
+                    hover-hint='Vertical position of the bar bottom.' />
 
-    <!-- Star評価設定 -->
-    <horizontal preferred-height='0.5' bg='round-rect-panel' bg-color='#444444' />
+    <slider-setting text='Height'
+                    value='score-height'
+                    apply-on-change='true'
+                    min='0.05' max='1.5' increment='0.01'
+                    hover-hint='Bar height.' />
 
-    <horizontal>
-      <text text='★ Star評価（PP計算用）' font-size='3.5' align='Center' color='#FFD700' />
-    </horizontal>
+    <slider-setting text='Width'
+                    value='score-width'
+                    apply-on-change='true'
+                    min='0.01' max='0.1' increment='0.01'
+                    hover-hint='Bar width (thickness).' />
 
-    <horizontal>
-      <slider-setting text='Manual Star Rating'
-                      value='manual-star'
-                      apply-on-change='true'
-                      min='0' max='20' increment='0.1'
-                      hover-hint='プレイする譜面のStar評価を設定します。0 = PP非表示（正確率のみ表示）' />
-    </horizontal>
+    <button text='Reset All Settings'
+            on-click='reset-settings'
+            hover-hint='Reset all settings to their defaults.' />
 
-    <horizontal>
-      <text text='※ ScoreSaberのStar評価を手動で設定してください' font-size='2.5' align='Center' color='#AAAAAA' />
-    </horizontal>
+    <!-- 下が切れるのでスペーサー -->
+    <button text='' pref-width='15' pref-height='10' interactable='false' />
 
-    <!-- 区切り線 -->
-    <horizontal preferred-height='0.5' bg='round-rect-panel' bg-color='#444444' />
-
-    <!-- カラー設定 -->
-    <horizontal>
-      <text text='カラー設定（HTMLカラーコード）' font-size='3.5' align='Center' color='#CCCCCC' />
-    </horizontal>
-
-    <horizontal>
-      <string-setting text='左手カラー'
-                      value='left-color'
-                      apply-on-change='true'
-                      hover-hint='左手PPのテキストカラー（例: #FF5555）' />
-    </horizontal>
-
-    <horizontal>
-      <string-setting text='右手カラー'
-                      value='right-color'
-                      apply-on-change='true'
-                      hover-hint='右手PPのテキストカラー（例: #5555FF）' />
-    </horizontal>
-
-    <!-- 区切り線 -->
-    <horizontal preferred-height='0.5' bg='round-rect-panel' bg-color='#444444' />
-
-    <!-- 表示位置設定 -->
-    <horizontal>
-      <text text='表示位置（オフセット）' font-size='3.5' align='Center' color='#CCCCCC' />
-    </horizontal>
-
-    <horizontal>
-      <slider-setting text='X オフセット'
-                      value='pos-x'
-                      apply-on-change='true'
-                      min='-600' max='600' increment='10'
-                      hover-hint='HUD表示位置の横方向オフセット' />
-    </horizontal>
-
-    <horizontal>
-      <slider-setting text='Y オフセット'
-                      value='pos-y'
-                      apply-on-change='true'
-                      min='-600' max='600' increment='10'
-                      hover-hint='HUD表示位置の縦方向オフセット' />
-    </horizontal>
-
-    <!-- 区切り線 -->
-    <horizontal preferred-height='0.5' bg='round-rect-panel' bg-color='#444444' />
-
-    <!-- ボタン -->
-    <horizontal>
-      <button text='RESET ALL SETTINGS'
-              on-click='reset-settings'
-              bg-color='#993333'
-              hover-hint='すべての設定を初期値にリセットします' />
-    </horizontal>
-
-  </vertical>
-
+  </settings-container>
 </bg>

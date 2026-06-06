@@ -102,13 +102,6 @@ namespace LRCounter.Models
             return value;
         }
 
-        // ノーフェイルペナルティ：実スコアのみ半減。MaxPossibleScore（FC想定）は変えない
-        public void ApplyPenalty(float factor)
-        {
-            TotalScore = (int)(TotalScore * factor);
-            RecalculatePP();
-        }
-
         // 曲開始時に全カウンタをリセットする
         public void Reset()
         {
