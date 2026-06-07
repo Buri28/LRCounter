@@ -1,6 +1,7 @@
 using System;
 using HMUI;
 using LRCounter.Configuration;
+using LRCounter.Controllers.Display;
 using TMPro;
 using UnityEngine;
 using Zenject;
@@ -95,8 +96,8 @@ namespace LRCounter.Controllers
                 return;
             }
 
-            _leftText.color = HandColor(_config.LeftHandColor, new Color(1f, 0.33f, 0.33f));
-            _rightText.color = HandColor(_config.RightHandColor, new Color(0.33f, 0.33f, 1f));
+            _leftText.color = LRDisplayCommon.LeftHandColorDefault;
+            _rightText.color = LRDisplayCommon.RightHandColorDefault;
             _leftText.text = FormatHand("L", _store.LeftPP, _store.LeftAccuracyPercent);
             _rightText.text = FormatHand("R", _store.RightPP, _store.RightAccuracyPercent);
         }
@@ -106,12 +107,6 @@ namespace LRCounter.Controllers
         {
             string ppLine = _store.HasStar ? $"{pp:F1}pp" : "---";
             return $"{label}\n{ppLine}\n{accPercent:F2}%";
-        }
-
-        // 設定のカラーコードを Color に変換（失敗時はフォールバック）
-        private static Color HandColor(string htmlColor, Color fallback)
-        {
-            return ColorUtility.TryParseHtmlString(htmlColor, out Color c) ? c : fallback;
         }
     }
 }

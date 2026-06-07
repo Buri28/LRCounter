@@ -18,12 +18,6 @@ namespace LRCounter.Configuration
         // テキストサイズ (CountersPlus 準拠の canvas 単位)
         public virtual float TextSize { get; set; } = 3f;
 
-        // 左手の表示カラー（16進文字列）
-        public virtual string LeftHandColor { get; set; } = "#FF5555";
-
-        // 右手の表示カラー（16進文字列）
-        public virtual string RightHandColor { get; set; } = "#5555FF";
-
         // ─── 共有の奥行き ───────────────────────────────────────────────
         // Canvas全体をカメラ側へ寄せて前面化する距離(ワールド単位/メートル)。大きいほど手前。
         public virtual float DepthZ { get; set; } = 0.80f;

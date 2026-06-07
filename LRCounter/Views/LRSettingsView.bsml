@@ -34,20 +34,6 @@
                     min='1' max='10' increment='0.5'
                     hover-hint='Font size of the labels.' />
 
-    <!-- 左手バー・左ラベルの色(HTML16進。例 #FF5555) -->
-    <string-setting text='Left Hand Color'
-                    value='left-color'
-                    apply-on-change='true'
-                    bind-value='true'
-                    hover-hint='Left hand color as an HTML hex code (e.g. #FF5555).' />
-
-    <!-- 右手バー・右ラベルの色(HTML16進。例 #5555FF) -->
-    <string-setting text='Right Hand Color'
-                    value='right-color'
-                    apply-on-change='true'
-                    bind-value='true'
-                    hover-hint='Right hand color as an HTML hex code (e.g. #5555FF).' />
-
     <!-- ───────── Total Label (combined %/PP) ───────── -->
     <horizontal spacing='1' pad='0' pad-top='1'>
       <text text='[Total Label]' color='#FFD700' />

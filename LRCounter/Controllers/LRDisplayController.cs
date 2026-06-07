@@ -42,11 +42,9 @@ namespace LRCounter.Controllers
         {
             if (!_config.Enabled) return;
 
-            // 設定のカラーコード(#RRGGBB)をUnityのColorに変換。失敗時はデフォルト色
-            if (!ColorUtility.TryParseHtmlString(_config.LeftHandColor, out Color leftColor))
-                leftColor = new Color(1f, 0.33f, 0.33f); // デフォルト: 赤系
-            if (!ColorUtility.TryParseHtmlString(_config.RightHandColor, out Color rightColor))
-                rightColor = new Color(0.33f, 0.33f, 1f); // デフォルト: 青系
+            // 左右の手の色は共通の既定色を使う（バー・ラベル色は実際には帯色/threshold色で上書きされる）
+            Color leftColor = LRDisplayCommon.LeftHandColorDefault;
+            Color rightColor = LRDisplayCommon.RightHandColorDefault;
 
             // 各表示コンポーネントを生成して共通インターフェースのリストに登録（移譲先）。
             // 要素を追加したいときはここに add するだけでよい。

@@ -60,22 +60,6 @@ namespace LRCounter.Controllers
             set { _config.ShowScoreBar = value; _config.Changed(); }
         }
 
-        // ———— Left Hand Color ————
-        [UIValue("left-color")]
-        public string LeftHandColor
-        {
-            get => _config.LeftHandColor;
-            set { _config.LeftHandColor = value; _config.Changed(); }
-        }
-
-        // ———— Right Hand Color ————
-        [UIValue("right-color")]
-        public string RightHandColor
-        {
-            get => _config.RightHandColor;
-            set { _config.RightHandColor = value; _config.Changed(); }
-        }
-
         // ———— Shared depth ————
         [UIValue("depth-z")]
         public float DepthZ
@@ -178,8 +162,6 @@ namespace LRCounter.Controllers
             _config.ShowTotalLabel = d.ShowTotalLabel;
             _config.ShowAccBar = d.ShowAccBar;
             _config.ShowScoreBar = d.ShowScoreBar;
-            _config.LeftHandColor = d.LeftHandColor;
-            _config.RightHandColor = d.RightHandColor;
             _config.DepthZ = d.DepthZ;
             _config.AccBarSpacing = d.AccBarSpacing;
             _config.AccBarY = d.AccBarY;
@@ -199,8 +181,6 @@ namespace LRCounter.Controllers
             NotifyPropertyChanged(nameof(ShowTotalLabel));
             NotifyPropertyChanged(nameof(ShowAccBar));
             NotifyPropertyChanged(nameof(ShowScoreBar));
-            NotifyPropertyChanged(nameof(LeftHandColor));
-            NotifyPropertyChanged(nameof(RightHandColor));
             NotifyPropertyChanged(nameof(DepthZ));
             NotifyPropertyChanged(nameof(AccBarSpacing));
             NotifyPropertyChanged(nameof(AccBarY));
