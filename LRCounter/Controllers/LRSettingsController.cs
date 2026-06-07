@@ -85,18 +85,11 @@ namespace LRCounter.Controllers
         }
 
         // ———— Accuracy bar layout ————
-        [UIValue("acc-left-x")]
-        public float AccBarLeftX
+        [UIValue("acc-spacing")]
+        public float AccBarSpacing
         {
-            get => _config.AccBarLeftX;
-            set { _config.AccBarLeftX = value; _config.Changed(); }
-        }
-
-        [UIValue("acc-right-x")]
-        public float AccBarRightX
-        {
-            get => _config.AccBarRightX;
-            set { _config.AccBarRightX = value; _config.Changed(); }
+            get => _config.AccBarSpacing;
+            set { _config.AccBarSpacing = value; _config.Changed(); }
         }
 
         [UIValue("acc-y")]
@@ -121,18 +114,11 @@ namespace LRCounter.Controllers
         }
 
         // ———— Score bar layout ————
-        [UIValue("score-left-x")]
-        public float ScoreBarLeftX
+        [UIValue("score-spacing")]
+        public float ScoreBarSpacing
         {
-            get => _config.ScoreBarLeftX;
-            set { _config.ScoreBarLeftX = value; _config.Changed(); }
-        }
-
-        [UIValue("score-right-x")]
-        public float ScoreBarRightX
-        {
-            get => _config.ScoreBarRightX;
-            set { _config.ScoreBarRightX = value; _config.Changed(); }
+            get => _config.ScoreBarSpacing;
+            set { _config.ScoreBarSpacing = value; _config.Changed(); }
         }
 
         [UIValue("score-y")]
@@ -195,13 +181,11 @@ namespace LRCounter.Controllers
             _config.LeftHandColor = d.LeftHandColor;
             _config.RightHandColor = d.RightHandColor;
             _config.DepthZ = d.DepthZ;
-            _config.AccBarLeftX = d.AccBarLeftX;
-            _config.AccBarRightX = d.AccBarRightX;
+            _config.AccBarSpacing = d.AccBarSpacing;
             _config.AccBarY = d.AccBarY;
             _config.AccBarHeight = d.AccBarHeight;
             _config.AccBarWidth = d.AccBarWidth;
-            _config.ScoreBarLeftX = d.ScoreBarLeftX;
-            _config.ScoreBarRightX = d.ScoreBarRightX;
+            _config.ScoreBarSpacing = d.ScoreBarSpacing;
             _config.ScoreBarY = d.ScoreBarY;
             _config.ScoreBarHeight = d.ScoreBarHeight;
             _config.ScoreBarWidth = d.ScoreBarWidth;
@@ -218,13 +202,11 @@ namespace LRCounter.Controllers
             NotifyPropertyChanged(nameof(LeftHandColor));
             NotifyPropertyChanged(nameof(RightHandColor));
             NotifyPropertyChanged(nameof(DepthZ));
-            NotifyPropertyChanged(nameof(AccBarLeftX));
-            NotifyPropertyChanged(nameof(AccBarRightX));
+            NotifyPropertyChanged(nameof(AccBarSpacing));
             NotifyPropertyChanged(nameof(AccBarY));
             NotifyPropertyChanged(nameof(AccBarHeight));
             NotifyPropertyChanged(nameof(AccBarWidth));
-            NotifyPropertyChanged(nameof(ScoreBarLeftX));
-            NotifyPropertyChanged(nameof(ScoreBarRightX));
+            NotifyPropertyChanged(nameof(ScoreBarSpacing));
             NotifyPropertyChanged(nameof(ScoreBarY));
             NotifyPropertyChanged(nameof(ScoreBarHeight));
             NotifyPropertyChanged(nameof(ScoreBarWidth));
