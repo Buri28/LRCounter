@@ -96,6 +96,37 @@ namespace LRCounter.Models
             return 0;
         }
 
+        // 目標PPとStar評価から、それを達成するのに必要な精度(0.0〜1.0)を逆算する。
+        // CalculatePP の逆関数。アンランクや不正値は0を返す。
+        public static double AccuracyForPP(double targetPP, double starRating)
+        {
+            if (starRating <= 0 || targetPP <= 0) return 0;
+            double requiredMult = targetPP / (starRating * StarMultiplier);
+            return AccuracyForMultiplier(requiredMult);
+        }
+
+        // PP倍率からそれに対応する精度を、GetPPMultiplier と同じカーブで逆補間して求める
+        private static double AccuracyForMultiplier(double mult)
+        {
+            // カーブは threshold(精度)・ppMultiplier ともに降順。範囲外は端の精度に丸める。
+            if (mult >= PPCurve[0].ppMultiplier) return PPCurve[0].threshold;                       // 100%以上
+            if (mult <= PPCurve[PPCurve.Length - 1].ppMultiplier) return PPCurve[PPCurve.Length - 1].threshold; // 0%
+
+            for (int i = 0; i < PPCurve.Length - 1; i++)
+            {
+                double upMult = PPCurve[i].ppMultiplier;     // 高い側
+                double loMult = PPCurve[i + 1].ppMultiplier; // 低い側
+                if (mult <= upMult && mult >= loMult)
+                {
+                    double t = (mult - loMult) / (upMult - loMult); // 0.0〜1.0
+                    double upAcc = PPCurve[i].threshold;
+                    double loAcc = PPCurve[i + 1].threshold;
+                    return loAcc + t * (upAcc - loAcc);
+                }
+            }
+            return 0;
+        }
+
         // スコアと最大スコアから精度を計算する（汎用ユーティリティ）
         public static double ScoreToAccuracy(int score, int maxScore)
         {

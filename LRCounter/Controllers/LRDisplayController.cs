@@ -34,6 +34,11 @@ namespace LRCounter.Controllers
         private TMP_Text? _rightPPLabel;
         private double _prevRightAcc = 0;
 
+        // 目標ライン：ThresholdPP（トータルを底上げするのに必要なPP）を必要精度に逆算して
+        // 各精度バー上に横線で表示する。この線を超えれば現状のトータルPPを上回る。
+        private Image? _leftTargetLine;
+        private Image? _rightTargetLine;
+
         // フラッシュ終了時刻（Time.time基準、-1は非アクティブ）
         private float _leftFlashEnd = -1f;
         private float _rightFlashEnd = -1f;
@@ -63,6 +68,8 @@ namespace LRCounter.Controllers
         // 精度バーの目盛り：横線でバーを GridDivisions 分割する（線は GridDivisions-1 本）
         private const int GridDivisions = 10;
         private const float GridLineHalfHeight = 0.1f;      // 目盛り線の半分の高さ（Canvas論理単位、全線共通。細め）
+        private const float TargetLineHalfHeight = 0.18f;   // 目標ラインの半分の高さ（目盛り線より太く目立たせる）
+        private static readonly Color TargetLineColor = new Color(1f, 1f, 1f, 0.95f); // 目標ラインの色（白・太め）
         private static readonly Color GridLineColor = new Color(1f, 1f, 1f, 0.45f); // 通常の目盛り線の色（半透明白）
         private static readonly Color GridLineColorBold = new Color(0f, 0f, 0f, 1f); // 強調線の色（不透明黒）
         // 特定の精度の目盛り線を専用色で強調する: 95%=黒 / 98%=オレンジ / 99%=赤。色は GridLineColorFor() で決定。
@@ -297,6 +304,10 @@ namespace LRCounter.Controllers
             _debugLabel = CreateDebugLabel(canvasRT, layer);
             _totalLabel = CreateTotalLabel(canvasRT, layer);
             CreateCenterBar(canvasRT, layer);
+
+            // 目標ライン（必要精度）を各精度バー上に作る。位置はUpdateDisplayで毎回更新。
+            _leftTargetLine = CreateTargetLine((RectTransform)_leftFill!.transform.parent, layer);
+            _rightTargetLine = CreateTargetLine((RectTransform)_rightFill!.transform.parent, layer);
 
             // フラッシュのフェードアウトはUpdate()で毎フレーム処理する必要があるため
             // MonoBehaviourをアタッチしてTickFlash()を呼ばせる
@@ -642,6 +653,52 @@ namespace LRCounter.Controllers
             ApplyNoGlow(img);
         }
 
+        // 目標ライン(必要精度)を1本生成する。位置は後で SetTargetLineFrac で更新する。初期は非表示。
+        private Image CreateTargetLine(RectTransform barRT, int layer)
+        {
+            var go = new GameObject("LRTargetLine");
+            go.layer = layer;
+            var rt = go.AddComponent<RectTransform>();
+            rt.SetParent(barRT, false);
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(1f, 0f);
+            rt.offsetMin = new Vector2(0f, -TargetLineHalfHeight);
+            rt.offsetMax = new Vector2(0f, TargetLineHalfHeight);
+            var img = go.AddComponent<Image>();
+            img.sprite = CreateWhiteSprite();
+            img.color = TargetLineColor;
+            ApplyNoGlow(img);
+            go.SetActive(false);
+            return img;
+        }
+
+        // 目標ラインを縦位置 frac(0〜1) に移動する
+        private static void SetTargetLineFrac(Image? line, float frac)
+        {
+            if (line == null) return;
+            var rt = (RectTransform)line.transform;
+            rt.anchorMin = new Vector2(0f, frac);
+            rt.anchorMax = new Vector2(1f, frac);
+        }
+
+        // ThresholdPP を必要精度に逆算して目標ラインの位置を更新する。
+        // Star評価が無い/Threshold未確定なら線を隠す。
+        private void UpdateTargetLine()
+        {
+            double threshold = _trackerService.ThresholdPP;
+            double star = _trackerService.StarRating;
+            bool show = star > 0 && threshold > 0;
+
+            if (_leftTargetLine != null) _leftTargetLine.gameObject.SetActive(show);
+            if (_rightTargetLine != null) _rightTargetLine.gameObject.SetActive(show);
+            if (!show) return;
+
+            double reqAccPct = PPCalculator.AccuracyForPP(threshold, star) * 100.0;
+            float frac = AccToFill(reqAccPct);
+            SetTargetLineFrac(_leftTargetLine, frac);
+            SetTargetLineFrac(_rightTargetLine, frac);
+        }
+
         // 精度(%)を表示レンジ(AccDisplayMin〜Max)で正規化して塗りつぶし量(0〜1)に変換する
         private static float AccToFill(double acc)
         {
@@ -692,24 +749,42 @@ namespace LRCounter.Controllers
             _leftLabel!.color = BrighterLabelColor(leftBarColor);
             _rightLabel!.color = BrighterLabelColor(rightBarColor);
 
-            // %ラベルの上にPPを表示（小数1桁＋末尾PP）。アンランク(StarRating<=0)なら ""
+            // PP色は精度の帯色とは分離する：通常は黄、threshold(底上げライン)を超えたら緑。
+            // threshold未確定(0)やアンランクのときは超過扱いにしない＝黄のまま。
             bool hasStar = _trackerService.StarRating > 0;
+            bool thresholdExceeded = hasStar
+                && _trackerService.ThresholdPP > 0
+                && _trackerService.TotalPP >= _trackerService.ThresholdPP;
+            Color ppColor = thresholdExceeded ? ColGreen : ColYellow;
+
+            // %ラベルの上にPPを表示（小数1桁＋末尾PP）。アンランク(StarRating<=0)なら ""
             _leftPPLabel!.text = hasStar ? $"{_trackerService.LeftTracker.PP:F1}PP" : "";
             _rightPPLabel!.text = hasStar ? $"{_trackerService.RightTracker.PP:F1}PP" : "";
-            _leftPPLabel!.color = BrighterLabelColor(leftBarColor);
-            _rightPPLabel!.color = BrighterLabelColor(rightBarColor);
+            _leftPPLabel!.color = ppColor;
+            _rightPPLabel!.color = ppColor;
 
-            // 中央上部の合算ラベル：上段にPP、下段に%。アンランクなら%のみ。
-            // 文字色は合計精度に対応する精度バーの帯色（を少し明るくしたもの）に合わせる。
+            // 中央上部の合算ラベル：上段にPP（黄/緑）、下段に%（精度帯色）。アンランクなら%のみ。
+            // PPと%で色を分けるためリッチテキストの<color>でそれぞれ着色する。
             if (_totalLabel != null)
             {
                 double totalAccPct = _trackerService.TotalAccuracy * 100.0;
-                string accLine = $"{totalAccPct:F2}%";
-                _totalLabel.text = hasStar
-                    ? $"{_trackerService.TotalPP:F1}PP\n{accLine}"
-                    : accLine;
-                _totalLabel.color = BrighterLabelColor(AccuracyBarColor(totalAccPct));
+                Color accColor = BrighterLabelColor(AccuracyBarColor(totalAccPct));
+                string accHex = ColorUtility.ToHtmlStringRGB(accColor);
+                string accLine = $"<color=#{accHex}>{totalAccPct:F2}%</color>";
+                if (hasStar)
+                {
+                    string ppHex = ColorUtility.ToHtmlStringRGB(ppColor);
+                    _totalLabel.text = $"<color=#{ppHex}>{_trackerService.TotalPP:F1}PP</color>\n{accLine}";
+                }
+                else
+                {
+                    _totalLabel.text = accLine;
+                }
+                _totalLabel.color = Color.white; // 実際の色は<color>タグで指定する
             }
+
+            // 目標ライン（必要精度）の位置を更新
+            UpdateTargetLine();
 
             // デバッグ：直前ノーツの生スコアと現在倍率を表示
             if (_debugLabel != null)
@@ -731,9 +806,13 @@ namespace LRCounter.Controllers
                 double totalAcc = _trackerService.TotalAccuracy * 100.0;
                 double totalPP = _trackerService.TotalPP;
                 double star = _trackerService.StarRating;
+                // 閾値（トータルを底上げできる最低PP）と、それを必要精度に逆算した%
+                double thrPP = _trackerService.ThresholdPP;
+                double thrAcc = PPCalculator.AccuracyForPP(thrPP, star) * 100.0;
                 _debugLabel.text =
                     $"{totalAcc:F2}%  {totalPP:F1}pp  ★{star:F2}  L:{lScore}  R:{rScore}  x{mult}\n" +
-                    $"{calcScore}：({gameScore}) /{_trackerService.TotalMaxScore}";
+                    $"{calcScore}：({gameScore}) /{_trackerService.TotalMaxScore}\n" +
+                    $"Thr:{thrPP:F2}pp ({thrAcc:F2}%)";
                 // 一致=通常色(黄)、不一致=赤。検算が合っているか一目で分かるようにする。
                 _debugLabel.color = scoreMatches ? Color.yellow : Color.red;
             }
