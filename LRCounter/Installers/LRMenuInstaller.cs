@@ -31,6 +31,11 @@ namespace LRCounter.Installers
             Container.BindInterfacesTo<LRMenuManager>()
                      .AsSingle()
                      .NonLazy();
+
+            // リザルト画面に左右の平均精度・PPを表示するコントローラー
+            Container.BindInterfacesTo<LRResultsController>()
+                     .AsSingle()
+                     .NonLazy();
         }
     }
 }

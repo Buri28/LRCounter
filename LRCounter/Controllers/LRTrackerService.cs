@@ -73,19 +73,23 @@ namespace LRCounter.Controllers
         // ThresholdExceededを一度だけ発火させるためのフラグ
         private bool _thresholdExceededFired = false;
 
+        private readonly LRResultStore _resultStore;
+
         [Inject]
         public LRTrackerService(
             ScoreController scoreController,
             GameplayCoreSceneSetupData sceneSetupData,
             PluginConfig config,
             ScoreSaberApiService apiService,
-            GameEnergyCounter energyCounter)
+            GameEnergyCounter energyCounter,
+            LRResultStore resultStore)
         {
             _scoreController = scoreController;
             _sceneSetupData = sceneSetupData;
             _config = config;
             _apiService = apiService;
             _energyCounter = energyCounter;
+            _resultStore = resultStore;
         }
 
         // 曲開始時にZenjectから呼ばれる。非同期でStar評価とThresholdを取得する
@@ -126,6 +130,15 @@ namespace LRCounter.Controllers
             _scoreController.scoringForNoteFinishedEvent -= OnScoringForNoteFinished;
             _scoreController.scoreDidChangeEvent -= OnScoreDidChange;
             _energyCounter.gameEnergyDidChangeEvent -= OnEnergyChanged;
+
+            // 曲終了時点の左右の平均精度・PPをリザルト画面用に保存する
+            _resultStore.Set(
+                LeftTracker.Accuracy * 100.0,
+                RightTracker.Accuracy * 100.0,
+                LeftTracker.PP,
+                RightTracker.PP,
+                StarRating > 0);
+
             GC.SuppressFinalize(this);
         }
 
