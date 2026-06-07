@@ -34,6 +34,9 @@ namespace LRCounter
             zenjector.UseHttpService();
             zenjector.UseMetadataBinder<Plugin>();
 
+            // アプリ全体に常駐する受け渡し用ストアを登録（Player/Menuでまたいで使う）
+            zenjector.Install<LRAppInstaller>(Location.App);
+
             // ゲームプレイシーン（曲プレイ中）にサービスとコントローラーを登録
             zenjector.Install<LRGameInstaller>(Location.Player, Config);
 
