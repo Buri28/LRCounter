@@ -113,7 +113,7 @@ namespace LRCounter.Controllers
             }
             catch (HttpRequestException ex)
             {
-                // 404などAPIエラーは通常のケースなのでInfoレベルで記録
+                // 404などAPIエラーは通常のケース（アンランク等）なのでInfoレベルで記録
                 Plugin.Log.Info($"[ScoreSaberApi] Leaderboard API: {ex.Message}");
             }
             catch (Exception ex)
@@ -123,113 +123,147 @@ namespace LRCounter.Controllers
             return 0;
         }
 
-        // ─── Top100スコア取得 ──────────────────────────────────────────────────────
+        // ─── ランクスコア取得（ページング） ─────────────────────────────────────────
 
-        // プレイヤーのTop100スコアを (PP値, 譜面ハッシュ) のリストとして取得する
-        // PP降順でソート済みのリストを返す
-        // エンドポイント(v2): /api/v2/players/{id}/scores?sort=top&limit=100
-        public async Task<List<(double pp, string hash)>> GetTop100ScoresAsync(string playerId)
+        // プレイヤーのランクスコアを (PP値, 譜面ハッシュ) のリストとして取得する。
+        // 1ページ100件で maxPages 分を「並列」取得する（逐次より速い）。
+        // Top100だけだと101位以下の微小寄与を無視してしまうため、Threshold精緻化のため深めに取る。
+        // PP降順でソート済みのリストを返す。
+        // エンドポイント(v2): /api/v2/players/{id}/scores?sort=top&limit=100&page=N
+        public async Task<List<(double pp, string hash, int difficulty, string gameMode)>> GetTopScoresAsync(string playerId, int maxPages)
         {
-            var scores = new List<(double pp, string hash)>();
+            var scores = new List<(double pp, string hash, int difficulty, string gameMode)>();
             try
             {
-                string url = $"https://scoresaber.com/api/v2/players/{playerId}/scores?sort=top&limit=100";
-                Plugin.Log.Info($"[ScoreSaberApi] GET {url}");
-                string json = await Http.GetStringAsync(url);
-
-                // "pp": X, "weight" というパターンでスコアのPPだけを抽出する
-                // （プレイヤー情報のppと区別するため "weight" の前にあるものを使う）
-                var ppMatches = Regex.Matches(json,
-                    @"""pp""\s*:\s*([\d.]+)\s*,\s*""weight""");
-                // v2では譜面ハッシュは leaderboard.map.hash（v1の "songHash" から変更）
-                var hashMatches = Regex.Matches(json,
-                    @"""hash""\s*:\s*""([A-Fa-f0-9]+)""",
-                    RegexOptions.IgnoreCase);
-
-                // ppとhashの数が一致する範囲でペアにする
-                int count = Math.Min(ppMatches.Count, hashMatches.Count);
-                for (int i = 0; i < count; i++)
+                // 各ページを並列でリクエストして一括待ち合わせる。範囲外ページの404等は
+                // SafeGetStringAsync が "" を返すので、1ページの失敗で全体が落ちることはない。
+                var pageTasks = new List<Task<string>>();
+                for (int page = 1; page <= maxPages; page++)
                 {
-                    if (double.TryParse(ppMatches[i].Groups[1].Value,
-                            NumberStyles.Float, CultureInfo.InvariantCulture, out double pp))
-                        scores.Add((pp, hashMatches[i].Groups[1].Value.ToUpperInvariant()));
+                    string url = $"https://scoresaber.com/api/v2/players/{playerId}/scores?sort=top&limit=100&page={page}";
+                    Plugin.Log.Info($"[ScoreSaberApi] GET {url}");
+                    pageTasks.Add(SafeGetStringAsync(url));
+                }
+                string[] jsons = await Task.WhenAll(pageTasks);
+
+                foreach (string json in jsons)
+                {
+                    // 1スコア = score{...pp...weight...} + leaderboard{ map{hash}, difficulty{difficulty,gameMode} }
+                    // という順で並ぶので、pp/hash/難易度/モードを同順で抽出してインデックスでペアにする。
+                    // （同じ譜面でも難易度・モードが違えば別リーダーボード＝別スコアなので全部で照合する）
+                    var ppMatches = Regex.Matches(json,
+                        @"""pp""\s*:\s*([\d.]+)\s*,\s*""weight""");
+                    // v2では譜面ハッシュは leaderboard.map.hash（v1の "songHash" から変更）
+                    var hashMatches = Regex.Matches(json,
+                        @"""hash""\s*:\s*""([A-Fa-f0-9]+)""",
+                        RegexOptions.IgnoreCase);
+                    // 難易度は difficulty オブジェクト内の整数 "difficulty":N（外側キーは "difficulty":{ なので一致しない）
+                    var diffMatches = Regex.Matches(json, @"""difficulty""\s*:\s*(\d+)");
+                    var modeMatches = Regex.Matches(json, @"""gameMode""\s*:\s*""([^""]+)""");
+
+                    // 4種の抽出数が揃う範囲でペアにする
+                    int count = Math.Min(Math.Min(ppMatches.Count, hashMatches.Count),
+                                         Math.Min(diffMatches.Count, modeMatches.Count));
+                    for (int i = 0; i < count; i++)
+                    {
+                        if (double.TryParse(ppMatches[i].Groups[1].Value,
+                                NumberStyles.Float, CultureInfo.InvariantCulture, out double pp)
+                            && int.TryParse(diffMatches[i].Groups[1].Value, out int diff))
+                            scores.Add((pp, hashMatches[i].Groups[1].Value.ToUpperInvariant(),
+                                        diff, modeMatches[i].Groups[1].Value));
+                    }
                 }
 
                 // PP降順でソート
                 scores.Sort((a, b) => b.pp.CompareTo(a.pp));
-                Plugin.Log.Info($"[ScoreSaberApi] Parsed {scores.Count} top scores.");
+                Plugin.Log.Info($"[ScoreSaberApi] Parsed {scores.Count} ranked scores.");
             }
             catch (Exception ex)
             {
-                Plugin.Log.Warn($"[ScoreSaberApi] GetTop100Scores failed: {ex.Message}");
+                Plugin.Log.Warn($"[ScoreSaberApi] GetTopScores failed: {ex.Message}");
             }
             return scores;
         }
 
-        // ─── Threshold（ランクアップ必要PP）の計算 ────────────────────────────────
-
-        // 「このPP以上を出せばトータルPPがプラスになる」最低ラインを二分探索で求める
-        // topScores: 今の曲の既存スコアを除いたTop100（PP降順）
-        public static double CalculateThreshold(List<double> topScores)
+        // GetStringAsync を例外で全体が落ちないようにラップする（範囲外ページの404等は ""）
+        private static async Task<string> SafeGetStringAsync(string url)
         {
-            // Top100が埋まっていなければ、どんな小さいPPでもプラスになる
-            if (topScores.Count < 100)
-                return 0.01;
-
-            // 二分探索で「deltaが0を超えるギリギリの値」を64回反復して絞り込む
-            double low = 0, high = 3000;
-            for (int i = 0; i < 64; i++)
+            try
             {
-                double mid = (low + high) / 2.0;
-                if (CalculateDeltaPP(topScores, mid) > 0)
-                    high = mid; // midで増加するなら上限を下げる
-                else
-                    low  = mid; // midで増加しないなら下限を上げる
+                return await Http.GetStringAsync(url);
             }
-            return high;
+            catch (Exception ex)
+            {
+                Plugin.Log.Info($"[ScoreSaberApi] page fetch skipped: {ex.Message}");
+                return "";
+            }
         }
 
-        // newPPをTop100に追加したときのトータルPP変化量を計算する
-        // ScoreSaberの重み付け: rank位のスコアには 0.965^rank を掛けて合算する
-        private static double CalculateDeltaPP(List<double> sortedDesc, double newPP)
+        // ─── Threshold（トータルPPを底上げするのに必要な最低PP）の計算 ──────────────
+
+        // ScoreSaberの重み付け: rank位(0始まり・PP降順)のスコアに 0.965^rank を掛けて合算する。
+        // ScoreSaberはTop100だけでなく全スコアを重み付けするため、ここでも件数で打ち切らず全件で計算する。
+        private const double WeightDecay = 0.965;
+
+        // PP降順リストの重み付けトータルを返す（全件）
+        public static double WeightedTotal(List<double> sortedDesc)
         {
-            // newPPが入る位置を探す（降順リストへの挿入位置）
+            double total = 0;
+            for (int rank = 0; rank < sortedDesc.Count; rank++)
+                total += sortedDesc[rank] * Math.Pow(WeightDecay, rank);
+            return total;
+        }
+
+        // others(PP降順) に newPP を1件挿入したときの重み付けトータルを返す（挿入後の全件）。
+        // リストを実体化せずインデックス計算で求める。
+        private static double WeightedTotalWithInsert(List<double> sortedDescOthers, double newPP)
+        {
+            // newPPの挿入位置（降順を保つ位置）を求める
             int pos = 0;
-            while (pos < sortedDesc.Count && sortedDesc[pos] > newPP)
+            while (pos < sortedDescOthers.Count && sortedDescOthers[pos] > newPP)
                 pos++;
 
-            // newPPを挿入した場合と挿入しない場合のTop100加重合計をそれぞれ計算する
-            // リストを実際に生成せず、インデックス計算で直接求める（メモリ節約）
-            double newTotal = 0;
-            double oldTotal = 0;
-            int inserted = 0; // newPPをまだ挿入していない=0、挿入済み=1
-
-            for (int rank = 0; rank < 100; rank++)
+            double total = 0;
+            int n = sortedDescOthers.Count + 1; // 挿入後の件数
+            int inserted = 0; // 0=未挿入, 1=挿入済み
+            for (int rank = 0; rank < n; rank++)
             {
-                double w = Math.Pow(0.965, rank); // このランクの重み
-
-                double newVal;
-                int oldIdx = rank - inserted;
+                double val;
                 if (inserted == 0 && rank == pos)
                 {
-                    // このランクにnewPPを挿入する
-                    newVal = newPP;
+                    val = newPP;
                     inserted = 1;
                 }
                 else
                 {
-                    // 挿入後のリスト上のインデックスに対応するスコアを取得
                     int idx = rank - inserted;
-                    newVal = idx < sortedDesc.Count ? sortedDesc[idx] : 0;
+                    val = idx < sortedDescOthers.Count ? sortedDescOthers[idx] : 0;
                 }
-                newTotal += newVal * w;
-
-                // 挿入前のリストの同ランクのスコア
-                if (oldIdx < sortedDesc.Count)
-                    oldTotal += sortedDesc[oldIdx] * w;
+                total += val * Math.Pow(WeightDecay, rank);
             }
+            return total;
+        }
 
-            return newTotal - oldTotal; // プラスなら今のスコアより順位が上がる
+        // 「このPP以上を出せばトータルが gainEpsilon 以上増える」最低ラインを二分探索で求める。
+        // others     : 今の曲の既存スコアを除いた全ランクスコア（PP降順）。新スコアはこの枠に挿入される。
+        // baseline   : 既存スコア込みの現在の重み付けトータル（＝守るべき現状値）。
+        // gainEpsilon: 「増えた」とみなす最小増分（例 0.01pp）。
+        //   全スコアを対象にするので、101位以下の微小寄与も考慮した実際の増分で判定できる。
+        //   既にその曲でスコアがあるなら、それを上回って初めて増える＝threshold は概ね自己ベスト〜100位の間に出る。
+        public static double CalculateThreshold(List<double> others, double baseline, double gainEpsilon)
+        {
+            double target = baseline + gainEpsilon;
+            // 二分探索で「挿入後トータルが target 以上になるギリギリの値」を64回反復で絞り込む
+            double low = 0, high = 3000;
+            for (int i = 0; i < 64; i++)
+            {
+                double mid = (low + high) / 2.0;
+                if (WeightedTotalWithInsert(others, mid) >= target)
+                    high = mid; // midで gainEpsilon 以上増えるなら上限を下げる
+                else
+                    low = mid;  // 足りないなら下限を上げる
+            }
+            return high;
         }
     }
 }

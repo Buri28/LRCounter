@@ -1,6 +1,7 @@
 using LRCounter.Configuration;
 using LRCounter.Models;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Zenject;
@@ -39,6 +40,12 @@ namespace LRCounter.Controllers
         public double TotalPP { get; private set; } = 0; // 現在のスコアから推定される合計PP
         public double ThresholdPP { get; private set; } = 0; // ランクアップに必要な最低PP
         public double PlayerTotalPP { get; private set; } = 0; // ScoreSaberに登録されているプレイヤーの現在合計PP
+
+        // Threshold計算で取得するランクスコアのページ数（1ページ100件・並列取得）。101位以下の微小寄与まで
+        // 反映するため深めに取る。0.1pp判定なら必要な深さは概ね rank≈250 までなので3ページ(300件)で十分。
+        private const int ScorePagesToFetch = 3;
+        // 「トータルが増えた」とみなす最小増分(pp)。この分だけ増える最低スコアを Threshold とする。
+        private const double GainEpsilon = 0.1;
 
         // NF(ノーフェイル)で失敗すると、ゲームはスコアと最大スコアの両方を半減する（精度%は不変・スコアだけ半分）。
         // 失敗時点で削るのではなく、成立後に全体へ係数を掛けて再現する。通常1.0、NF失敗後0.5。
@@ -181,32 +188,42 @@ namespace LRCounter.Controllers
                 }
 
                 string? currentHash = GetCurrentMapHash();
+                // 難易度・ゲームモードも照合に使う（同じ譜面でも難易度違いは別リーダーボード＝別スコア）
+                var currentKey = _sceneSetupData.beatmapKey;
+                int currentDiff = ToScoreSaberDifficulty(currentKey.difficulty);
+                string currentMode = $"Solo{currentKey.beatmapCharacteristic.serializedName}";
 
-                // Top100スコアと現在の合計PPを並行して取得（どちらも時間がかかるため）
-                var top100Task = _apiService.GetTop100ScoresAsync(playerId!);
+                // ランクスコア（深めに取得）と現在の合計PPを並行して取得（どちらも時間がかかるため）。
+                // 101位以下の微小寄与まで反映するため Top100 ではなく複数ページ取得する。
+                var scoresTask = _apiService.GetTopScoresAsync(playerId!, ScorePagesToFetch);
                 var playerPPTask = _apiService.GetPlayerTotalPPAsync(playerId!);
-                await Task.WhenAll(top100Task, playerPPTask);
+                await Task.WhenAll(scoresTask, playerPPTask);
 
                 PlayerTotalPP = playerPPTask.Result;
                 Plugin.Log.Info($"[LRCounter] PlayerTotalPP={PlayerTotalPP:F2}");
 
-                var top100 = top100Task.Result;
+                var rankedScores = scoresTask.Result;
 
-                // 今プレイ中の曲が既にTop100に入っていたら除外する
-                // （「新しく出したスコアがどれだけ増やすか」を正確に計算するため）
+                // ベースライン＝既存スコア込みの現在の重み付けトータル（全件）。これを gainEpsilon 以上超えれば「底上げ」。
+                var allPp = rankedScores.Select(s => s.pp).ToList(); // PP降順（取得側で降順ソート済み）
+                double baseline = ScoreSaberApiService.WeightedTotal(allPp);
+
+                // 今プレイ中の曲が既にランクスコアにあれば、その枠は新スコアで置き換わるので候補リストから外す。
+                // （ベースライン baseline には既存スコアを含めたまま比較する＝既存スコアを上回って初めて増える）
+                var others = new List<double>(allPp);
                 if (!string.IsNullOrEmpty(currentHash))
                 {
-                    int idx = top100.FindIndex(s => s.hash == currentHash);
+                    int idx = rankedScores.FindIndex(s =>
+                        s.hash == currentHash && s.difficulty == currentDiff && s.gameMode == currentMode);
                     if (idx >= 0)
                     {
-                        Plugin.Log.Info($"[LRCounter] Removing existing score for this map (pp={top100[idx].pp:F2})");
-                        top100.RemoveAt(idx);
+                        Plugin.Log.Info($"[LRCounter] Existing score for this map (pp={rankedScores[idx].pp:F2}) will be replaced");
+                        others.RemoveAt(idx);
                     }
                 }
 
-                // PPリストを渡してThresholdPPを計算
-                var ppList = top100.Select(s => s.pp).ToList();
-                ThresholdPP = ScoreSaberApiService.CalculateThreshold(ppList);
+                // 「このPP以上を出せばトータルが GainEpsilon 以上増える」最低ラインを計算
+                ThresholdPP = ScoreSaberApiService.CalculateThreshold(others, baseline, GainEpsilon);
                 Plugin.Log.Info($"[LRCounter] ThresholdPP={ThresholdPP:F2}");
 
                 // Threshold確定後に表示を更新させる
@@ -261,7 +278,7 @@ namespace LRCounter.Controllers
             else
                 tracker?.AddMiss(maxCut, idealMult);
 
-            Plugin.Log.Debug($"[LRCounter] Note: color={noteData.colorType} type={scoringElement.GetType().Name} score={cutScore} ×{actualMult} (ideal ×{idealMult}, max {maxCut})");
+            //Plugin.Log.Debug($"[LRCounter] Note: color={noteData.colorType} type={scoringElement.GetType().Name} score={cutScore} ×{actualMult} (ideal ×{idealMult}, max {maxCut})");
 
             // 両手合算スコアを更新（ゲームの _multipliedScore / 最大スコアと一致する）
             // グッド以外は cutScore=0 なので _totalScore は増えない
