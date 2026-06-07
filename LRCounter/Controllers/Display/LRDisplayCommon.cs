@@ -22,6 +22,11 @@ namespace LRCounter.Controllers.Display
         public static readonly Color ColMagentaBright = new Color(1f, 0.25f, 0.90f); // マゼンタ(明)
         public static readonly Color ColGray = new Color(0.90f, 0.90f, 0.90f); // 白に近いグレー(最高ランク)
 
+        // 左右の手の既定色（リザルト画面の左右列などで使用）。
+        // 将来、色をまとめて設定可能にするときはここを設定値に差し替える。
+        public static readonly Color LeftHandColorDefault = new Color(1f, 0.33f, 0.33f);  // 赤系
+        public static readonly Color RightHandColorDefault = new Color(0.33f, 0.33f, 1f); // 青系
+
         // 目盛り線の共通色・太さ
         public static readonly Color GridLineColor = new Color(1f, 1f, 1f, 0.45f); // 通常の目盛り線（半透明白）
         public const float GridLineHalfHeight = 0.1f; // 目盛り線の半分の高さ（全線共通）
