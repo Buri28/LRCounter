@@ -692,10 +692,10 @@ namespace LRCounter.Controllers
             _leftLabel!.color = BrighterLabelColor(leftBarColor);
             _rightLabel!.color = BrighterLabelColor(rightBarColor);
 
-            // %ラベルの上にPPを表示（小数1桁＋末尾PP）。アンランク(StarRating<=0)なら "---"
+            // %ラベルの上にPPを表示（小数1桁＋末尾PP）。アンランク(StarRating<=0)なら ""
             bool hasStar = _trackerService.StarRating > 0;
-            _leftPPLabel!.text = hasStar ? $"{_trackerService.LeftTracker.PP:F1}PP" : "---";
-            _rightPPLabel!.text = hasStar ? $"{_trackerService.RightTracker.PP:F1}PP" : "---";
+            _leftPPLabel!.text = hasStar ? $"{_trackerService.LeftTracker.PP:F1}PP" : "";
+            _rightPPLabel!.text = hasStar ? $"{_trackerService.RightTracker.PP:F1}PP" : "";
             _leftPPLabel!.color = BrighterLabelColor(leftBarColor);
             _rightPPLabel!.color = BrighterLabelColor(rightBarColor);
 
