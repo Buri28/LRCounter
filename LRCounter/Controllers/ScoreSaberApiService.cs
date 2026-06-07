@@ -65,17 +65,17 @@ namespace LRCounter.Controllers
         // ─── プレイヤー情報取得 ────────────────────────────────────────────────────
 
         // ScoreSaberに登録されているプレイヤーの現在合計PPを取得する
-        // エンドポイント: /api/player/{id}/full
+        // エンドポイント(v2): /api/v2/players/{id}
         public async Task<double> GetPlayerTotalPPAsync(string playerId)
         {
             try
             {
-                string url = $"https://scoresaber.com/api/player/{playerId}/full";
+                string url = $"https://scoresaber.com/api/v2/players/{playerId}";
                 Plugin.Log.Info($"[ScoreSaberApi] GET {url}");
                 string json = await Http.GetStringAsync(url);
 
-                // レスポンスJSON中の先頭の "pp": 数値 を取得（最初に出てくるのが合計PP）
-                var m = Regex.Match(json, @"""pp""\s*:\s*([\d.]+)");
+                // v2では合計PPは stats.totalPP に入っている（v1のトップレベル "pp" から変更）
+                var m = Regex.Match(json, @"""totalPP""\s*:\s*([\d.]+)");
                 if (m.Success && double.TryParse(
                         m.Groups[1].Value, NumberStyles.Float,
                         CultureInfo.InvariantCulture, out double pp))
@@ -92,13 +92,13 @@ namespace LRCounter.Controllers
 
         // 譜面ハッシュ・難易度・ゲームモードを指定してStar評価を取得する
         // アンランク譜面や通信失敗の場合は0を返す
-        // エンドポイント: /api/leaderboard/by-hash/{hash}/info
+        // エンドポイント(v2): /api/v2/leaderboards/hash/{hash}/{mode}/{difficulty}
+        // （v1のクエリ指定からパス指定に変更。mode例="SoloStandard", difficulty=1/3/5/7/9）
         public async Task<double> GetLeaderboardStarsAsync(string hash, int difficulty, string gameMode)
         {
             try
             {
-                string url = $"https://scoresaber.com/api/leaderboard/by-hash/{hash}/info"
-                           + $"?difficulty={difficulty}&gameMode={gameMode}";
+                string url = $"https://scoresaber.com/api/v2/leaderboards/hash/{hash}/{gameMode}/{difficulty}";
                 Plugin.Log.Info($"[ScoreSaberApi] GET {url}");
                 string json = await Http.GetStringAsync(url);
 
@@ -127,13 +127,13 @@ namespace LRCounter.Controllers
 
         // プレイヤーのTop100スコアを (PP値, 譜面ハッシュ) のリストとして取得する
         // PP降順でソート済みのリストを返す
-        // エンドポイント: /api/player/{id}/scores?sort=top&limit=100
+        // エンドポイント(v2): /api/v2/players/{id}/scores?sort=top&limit=100
         public async Task<List<(double pp, string hash)>> GetTop100ScoresAsync(string playerId)
         {
             var scores = new List<(double pp, string hash)>();
             try
             {
-                string url = $"https://scoresaber.com/api/player/{playerId}/scores?sort=top&limit=100";
+                string url = $"https://scoresaber.com/api/v2/players/{playerId}/scores?sort=top&limit=100";
                 Plugin.Log.Info($"[ScoreSaberApi] GET {url}");
                 string json = await Http.GetStringAsync(url);
 
@@ -141,8 +141,9 @@ namespace LRCounter.Controllers
                 // （プレイヤー情報のppと区別するため "weight" の前にあるものを使う）
                 var ppMatches = Regex.Matches(json,
                     @"""pp""\s*:\s*([\d.]+)\s*,\s*""weight""");
+                // v2では譜面ハッシュは leaderboard.map.hash（v1の "songHash" から変更）
                 var hashMatches = Regex.Matches(json,
-                    @"""songHash""\s*:\s*""([A-Fa-f0-9]+)""",
+                    @"""hash""\s*:\s*""([A-Fa-f0-9]+)""",
                     RegexOptions.IgnoreCase);
 
                 // ppとhashの数が一致する範囲でペアにする
