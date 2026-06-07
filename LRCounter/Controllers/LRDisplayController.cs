@@ -402,8 +402,9 @@ namespace LRCounter.Controllers
         // グッドカットの平均生スコア(111〜115)を「下から上への塗り量」で表す。上ほど高得点。
         private void CreateCenterBar(RectTransform canvasRT, int layer)
         {
-            // 左右バーの中心X・幅は設定から取得（左右独立）。ラベルは各バーの中心に合わせる。
-            float barL = _config.ScoreBarLeftX, barR = _config.ScoreBarRightX;
+            // 左右バーの中心Xは画面中央(0.5)を起点に間隔ぶん左右へ広げる。幅は設定から取得。
+            float barL = 0.5f - _config.ScoreBarSpacing * 0.5f;
+            float barR = 0.5f + _config.ScoreBarSpacing * 0.5f;
             float halfW = _config.ScoreBarWidth * 0.5f;
             _leftCutFill = CreateCutBar(canvasRT, layer, "L", barL - halfW, barL + halfW);
             _rightCutFill = CreateCutBar(canvasRT, layer, "R", barR - halfW, barR + halfW);
@@ -495,8 +496,10 @@ namespace LRCounter.Controllers
             Color color = isLeft ? _leftColor : _rightColor;
             string side = isLeft ? "L" : "R";
 
-            // バーの中心X・幅・下端・高さは設定から取得（左右独立）。
-            float centerX = isLeft ? _config.AccBarLeftX : _config.AccBarRightX;
+            // バーの中心Xは画面中央(0.5)を起点に間隔ぶん左右へ広げる。幅・下端・高さは設定から取得。
+            float centerX = isLeft
+                ? 0.5f - _config.AccBarSpacing * 0.5f
+                : 0.5f + _config.AccBarSpacing * 0.5f;
             float halfW = _config.AccBarWidth * 0.5f;
             float barXMin = centerX - halfW;
             float barXMax = centerX + halfW;
