@@ -15,9 +15,6 @@ namespace LRCounter.Configuration
         // MOD 有効/無効
         public virtual bool Enabled { get; set; } = true;
 
-        // 表示する Star 評価の閾値（指定 Star 以上の譜面でのみ表示）
-        public virtual float MinStarRating { get; set; } = 0f;
-
         // テキストサイズ (CountersPlus 準拠の canvas 単位)
         public virtual float TextSize { get; set; } = 3f;
 
@@ -27,15 +24,9 @@ namespace LRCounter.Configuration
         // 右手の表示カラー（16進文字列）
         public virtual string RightHandColor { get; set; } = "#5555FF";
 
-        // PPの小数点以下の桁数
-        public virtual int DecimalPlaces { get; set; } = 2;
-
-        // 手動設定のStar評価（0 = PP非表示、正の値 = そのStarでPP計算）
-        public virtual float ManualStarRating { get; set; } = 0f;
-
         // ─── 共有の奥行き ───────────────────────────────────────────────
         // Canvas全体をカメラ側へ寄せて前面化する距離(ワールド単位/メートル)。大きいほど手前。
-        public virtual float DepthZ { get; set; } = 0.70f;
+        public virtual float DepthZ { get; set; } = 0.80f;
 
         // ─── 精度バー(外側)の配置（いずれもCanvas高さ/幅の比 0〜1） ───────
         public virtual bool ShowAccBar { get; set; } = true;      // 表示ON/OFF

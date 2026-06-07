@@ -30,14 +30,6 @@ namespace LRCounter.Controllers
             set { _config.Enabled = value; _config.Changed(); }
         }
 
-        // ———— MinStarRating ————
-        [UIValue("min-star")]
-        public float MinStarRating
-        {
-            get => _config.MinStarRating;
-            set { _config.MinStarRating = value; _config.Changed(); }
-        }
-
         // ———— TextSize ————
         [UIValue("text-size")]
         public float TextSize
@@ -68,14 +60,6 @@ namespace LRCounter.Controllers
             set { _config.ShowScoreBar = value; _config.Changed(); }
         }
 
-        // ———— DecimalPlaces ————
-        [UIValue("decimal-places")]
-        public int DecimalPlaces
-        {
-            get => _config.DecimalPlaces;
-            set { _config.DecimalPlaces = value; _config.Changed(); }
-        }
-
         // ———— Left Hand Color ————
         [UIValue("left-color")]
         public string LeftHandColor
@@ -90,14 +74,6 @@ namespace LRCounter.Controllers
         {
             get => _config.RightHandColor;
             set { _config.RightHandColor = value; _config.Changed(); }
-        }
-
-        // ———— Manual Star Rating ————
-        [UIValue("manual-star")]
-        public float ManualStarRating
-        {
-            get => _config.ManualStarRating;
-            set { _config.ManualStarRating = value; _config.Changed(); }
         }
 
         // ———— Shared depth ————
@@ -212,15 +188,12 @@ namespace LRCounter.Controllers
             var d = new PluginConfig();
 
             _config.Enabled = d.Enabled;
-            _config.MinStarRating = d.MinStarRating;
             _config.TextSize = d.TextSize;
             _config.ShowTotalLabel = d.ShowTotalLabel;
             _config.ShowAccBar = d.ShowAccBar;
             _config.ShowScoreBar = d.ShowScoreBar;
-            _config.DecimalPlaces = d.DecimalPlaces;
             _config.LeftHandColor = d.LeftHandColor;
             _config.RightHandColor = d.RightHandColor;
-            _config.ManualStarRating = d.ManualStarRating;
             _config.DepthZ = d.DepthZ;
             _config.AccBarLeftX = d.AccBarLeftX;
             _config.AccBarRightX = d.AccBarRightX;
@@ -238,15 +211,12 @@ namespace LRCounter.Controllers
             _config.Changed();
 
             NotifyPropertyChanged(nameof(Enabled));
-            NotifyPropertyChanged(nameof(MinStarRating));
             NotifyPropertyChanged(nameof(TextSize));
             NotifyPropertyChanged(nameof(ShowTotalLabel));
             NotifyPropertyChanged(nameof(ShowAccBar));
             NotifyPropertyChanged(nameof(ShowScoreBar));
-            NotifyPropertyChanged(nameof(DecimalPlaces));
             NotifyPropertyChanged(nameof(LeftHandColor));
             NotifyPropertyChanged(nameof(RightHandColor));
-            NotifyPropertyChanged(nameof(ManualStarRating));
             NotifyPropertyChanged(nameof(DepthZ));
             NotifyPropertyChanged(nameof(AccBarLeftX));
             NotifyPropertyChanged(nameof(AccBarRightX));

@@ -95,27 +95,18 @@ namespace LRCounter.Controllers
             _energyCounter.gameEnergyDidChangeEvent += OnEnergyChanged;
             Plugin.Log.Info("[LRCounter] Subscribed to scoringForNoteFinishedEvent / gameEnergyDidChangeEvent");
 
-            // Star評価の取得：手動設定があればそちらを優先、なければScoreSaber APIから取得
-            if (_config.ManualStarRating > 0)
+            // Star評価をScoreSaber APIから取得する
+            Plugin.Log.Info("[LRCounter] Fetching star rating from ScoreSaber...");
+            double fetched = await FetchStarRatingAsync();
+            if (fetched > 0)
             {
-                StarRating = _config.ManualStarRating;
+                StarRating = fetched;
                 ApplyStarRating();
-                Plugin.Log.Info($"[LRCounter] Manual StarRating={StarRating:F2}");
+                Plugin.Log.Info($"[LRCounter] Fetched StarRating={StarRating:F2}");
             }
             else
             {
-                Plugin.Log.Info("[LRCounter] Fetching star rating from ScoreSaber...");
-                double fetched = await FetchStarRatingAsync();
-                if (fetched > 0)
-                {
-                    StarRating = fetched;
-                    ApplyStarRating();
-                    Plugin.Log.Info($"[LRCounter] Fetched StarRating={StarRating:F2}");
-                }
-                else
-                {
-                    Plugin.Log.Info("[LRCounter] Map is unranked or fetch failed.");
-                }
+                Plugin.Log.Info("[LRCounter] Map is unranked or fetch failed.");
             }
 
             // Threshold計算は時間がかかるので、待機せずバックグラウンドで実行

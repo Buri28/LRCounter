@@ -696,7 +696,8 @@ namespace LRCounter.Controllers
             _leftPPLabel!.color = BrighterLabelColor(leftBarColor);
             _rightPPLabel!.color = BrighterLabelColor(rightBarColor);
 
-            // 中央上部の合算ラベル：上段にPP(白)、下段に%(黄・小さめ)。アンランクなら%のみ
+            // 中央上部の合算ラベル：上段にPP、下段に%。アンランクなら%のみ。
+            // 文字色は合計精度に対応する精度バーの帯色（を少し明るくしたもの）に合わせる。
             if (_totalLabel != null)
             {
                 double totalAccPct = _trackerService.TotalAccuracy * 100.0;
@@ -704,6 +705,7 @@ namespace LRCounter.Controllers
                 _totalLabel.text = hasStar
                     ? $"{_trackerService.TotalPP:F1}PP\n{accLine}"
                     : accLine;
+                _totalLabel.color = BrighterLabelColor(AccuracyBarColor(totalAccPct));
             }
 
             // デバッグ：直前ノーツの生スコアと現在倍率を表示
@@ -736,22 +738,6 @@ namespace LRCounter.Controllers
             // 中央バー：グッドカットの平均点数を塗り量・色・数字(小数1桁)で更新する
             UpdateCutBar(_leftCutFill, _leftCutLabel, _trackerService.LeftTracker.AverageCutScore, _trackerService.LeftTracker.FullCutNotes);
             UpdateCutBar(_rightCutFill, _rightCutLabel, _trackerService.RightTracker.AverageCutScore, _trackerService.RightTracker.FullCutNotes);
-
-            // PP表示（PP計算の確認が取れるまでコメントアウト）
-            // bool hasStar = _trackerService.StarRating > 0;
-            // string fmt   = $"F{_config.DecimalPlaces}";
-            // if (hasStar)
-            // {
-            //     double leftPP  = _trackerService.LeftTracker.PP;
-            //     double rightPP = _trackerService.RightTracker.PP;
-            //     _leftLabel!.text  = $"{leftPP.ToString(fmt)}<size=60%>pp</size>\n<size=60%>{leftAcc:F1}%</size>";
-            //     _rightLabel!.text = $"{rightPP.ToString(fmt)}<size=60%>pp</size>\n<size=60%>{rightAcc:F1}%</size>";
-            // }
-            // else
-            // {
-            //     _leftLabel!.text  = $"---<size=60%>pp</size>\n<size=60%>{leftAcc:F1}%</size>";
-            //     _rightLabel!.text = $"---<size=60%>pp</size>\n<size=60%>{rightAcc:F1}%</size>";
-            // }
         }
 
         // 中央バーの塗り量・色・数字を平均点数から更新する。
