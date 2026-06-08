@@ -36,8 +36,9 @@ namespace LRCounter.Controllers.Display
         private float _rightFlashEnd = -1f;
         private const float FlashDuration = 0.4f;
 
-        // 精度バーが表示する精度の範囲(%)。下端=Min、上端=Max にマッピングする
-        private const double AccDisplayMin = 90.0;
+        // 精度バーが表示する精度の範囲(%)。下端=Min、上端=Max にマッピングする。
+        // 下端は設定(AccBarMin)で 90/80/50/0 から選べる。
+        private double AccDisplayMin => _config.AccBarMin;
         private const double AccDisplayMax = 100.0;
 
         // 目盛り：10%刻みで10分割（線は9本）
@@ -291,7 +292,7 @@ namespace LRCounter.Controllers.Display
         }
 
         // 精度(%)を表示レンジで正規化して塗りつぶし量(0〜1)に変換する
-        private static float AccToFill(double acc)
+        private float AccToFill(double acc)
         {
             return Mathf.Clamp01((float)((acc - AccDisplayMin) / (AccDisplayMax - AccDisplayMin)));
         }

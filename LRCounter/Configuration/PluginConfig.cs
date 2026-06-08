@@ -28,6 +28,7 @@ namespace LRCounter.Configuration
         public virtual float AccBarY { get; set; } = 0.35f;       // バー下端のY
         public virtual float AccBarHeight { get; set; } = 0.50f;  // バーの高さ
         public virtual float AccBarWidth { get; set; } = 0.01f;   // バーの幅
+        public virtual int AccBarMin { get; set; } = 90;          // バー下端にマッピングする精度(%)。選択肢: 90/80/50/0
 
         // ─── 平均点数バー(内側)の配置（いずれもCanvas比 0〜1） ──────────────
         public virtual bool ShowScoreBar { get; set; } = true;    // 表示ON/OFF
@@ -35,6 +36,7 @@ namespace LRCounter.Configuration
         public virtual float ScoreBarY { get; set; } = 0.45f;
         public virtual float ScoreBarHeight { get; set; } = 0.27f;
         public virtual float ScoreBarWidth { get; set; } = 0.01f;
+        public virtual int ScoreBarMin { get; set; } = 110;       // バー下端にマッピングする平均点。選択肢: 110/105
 
         // ─── 合算ラベル（左右合計の精度・PPを中央上部に表示） ───────────────
         public virtual bool ShowTotalLabel { get; set; } = true; // 表示ON/OFF
