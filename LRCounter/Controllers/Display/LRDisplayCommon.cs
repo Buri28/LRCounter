@@ -1,4 +1,5 @@
 using System.Linq;
+using LRCounter.Configuration;
 using LRCounter.Controllers;
 using UnityEngine;
 using UnityEngine.UI;
@@ -31,40 +32,69 @@ namespace LRCounter.Controllers.Display
         public static readonly Color GridLineColor = new Color(1f, 1f, 1f, 0.45f); // 通常の目盛り線（半透明白）
         public const float GridLineHalfHeight = 0.1f; // 目盛り線の半分の高さ（全線共通）
 
-        // 1つの帯。[Lo, Hi) の値範囲を Stops の色で滑らかに塗る（帯内グラデーション）。
-        // 帯の Hi 側の色と次の帯の Lo 側の色が違うことで「切れ目」が生まれる。
-        public readonly struct ColorBand
+        // ─── 11段階バー色（精度バー・点数バー共通） ───────────────────────────────
+        // 各バンドの下端境界（その値以上でそのバンド）。最後のグレー(満点)は perfect 値でのみ適用。
+        // index 0..9 が設定の色 00〜09 に対応。10(グレー)は満点(100% / 115)のときだけ。
+        private static readonly double[] AccLowerBounds = { 0, 50, 70, 80, 90, 95, 96, 97, 98, 99 };
+        private static readonly double[] ScoreLowerBounds = { 105, 106, 107, 108, 109, 110, 111, 112, 113, 114 };
+        private const double AccPerfect = 100.0;
+        private const double ScorePerfect = 115.0;
+
+        // バンド下端での淡さ（白へ寄せる割合）。上端＝原色、下端＝この割合だけ白寄り。
+        private const float BandPaleAmount = 0.5f;
+
+        // 精度(%)から11段階の色を求める（100%は満点時のみグレー）
+        public static Color AccuracyBarColor(double accPercent)
+            => EvalElevenBands(AccLowerBounds, AccPerfect, GetBandColors(), accPercent);
+
+        // 平均点数から11段階の色を求める（115は満点時のみグレー）
+        public static Color ScoreBarColor(double score)
+            => EvalElevenBands(ScoreLowerBounds, ScorePerfect, GetBandColors(), score);
+
+        // 設定から11色（index0=最下位…index10=満点色）を取得する
+        public static Color[] GetBandColors()
         {
-            public readonly double Lo;
-            public readonly double Hi;
-            public readonly Color[] Stops;
-            public ColorBand(double lo, double hi, Color[] stops) { Lo = lo; Hi = hi; Stops = stops; }
+            var c = PluginConfig.Instance;
+            return new[]
+            {
+                ParseHex(c.Color00Red),
+                ParseHex(c.Color01Orange),
+                ParseHex(c.Color02Yellow),
+                ParseHex(c.Color03Green),
+                ParseHex(c.Color04Blue),
+                ParseHex(c.Color05Magenta),
+                ParseHex(c.Color06Cyan),
+                ParseHex(c.Color07LightBlue),
+                ParseHex(c.Color08Skin),
+                ParseHex(c.Color09Purple),
+                ParseHex(c.Color10Grey),
+            };
         }
 
-        // 精度(%)の帯テーブル。最上端(100%以上)はグレー。
-        private static readonly ColorBand[] AccuracyBands =
+        // hex(#RRGGBB)→Color。失敗時は白。
+        public static Color ParseHex(string hex)
+            => ColorUtility.TryParseHtmlString(hex, out var col) ? col : Color.white;
+
+        // Color→hex(#RRGGBB)
+        public static string ToHex(Color col) => "#" + ColorUtility.ToHtmlStringRGB(col);
+
+        // 値を11段階で評価する。各バンドは下端=淡い→上端=原色のグラデーション。満点で colors の最後(グレー)。
+        private static Color EvalElevenBands(double[] lowers, double perfect, Color[] colors, double value)
         {
-            new ColorBand(90, 95, new[] { ColRed, ColYellow, ColYellowGreen }), // 90〜94%台: 赤→黄→黄緑
-            new ColorBand(95, 98, new[] { ColGreen, ColBlue }),                 // 95〜97%台: 緑→青
-            new ColorBand(98, 99, new[] { ColSkinDark, ColSkinBright }),        // 98%台: 肌色徐々に明
-            new ColorBand(99, 100, new[] { ColMagentaDark, ColMagentaBright }), // 99%台: マゼンタ徐々に明
-        };
-
-        // 平均点数の帯テーブル。最上端(115以上)はグレー。
-        private static readonly ColorBand[] ScoreBands =
-        {
-            new ColorBand(110, 111, new[] { ColRed, ColOrange }),                 // 110: 赤→橙
-            new ColorBand(111, 112, new[] { ColYellow, ColYellowGreen }),         // 111: 黄→黄緑
-            new ColorBand(112, 113, new[] { ColGreen, ColBlue }),                 // 112: 緑→青
-            new ColorBand(113, 114, new[] { ColSkinDark, ColSkinBright }),        // 113: 肌色徐々に明
-            new ColorBand(114, 115, new[] { ColMagentaDark, ColMagentaBright }),  // 114: マゼンタ徐々に明
-        };
-
-        // 精度(%)から帯方式の色を求める（100%以上はグレー）
-        public static Color AccuracyBarColor(double accPercent) => EvalBands(AccuracyBands, accPercent, ColGray);
-
-        // 平均点数から帯方式の色を求める（115以上はグレー）
-        public static Color ScoreBarColor(double score) => EvalBands(ScoreBands, score, ColGray);
+            if (value >= perfect) return colors[colors.Length - 1]; // 満点（100% / 115）のみ
+            for (int i = lowers.Length - 1; i >= 0; i--)
+            {
+                if (value >= lowers[i])
+                {
+                    double hi = (i + 1 < lowers.Length) ? lowers[i + 1] : perfect;
+                    float local = Mathf.Clamp01((float)((value - lowers[i]) / (hi - lowers[i])));
+                    Color vivid = colors[i];
+                    return Color.Lerp(Color.Lerp(vivid, Color.white, BandPaleAmount), vivid, local);
+                }
+            }
+            // 最下端境界未満（点数で105未満など）→ 最も淡い最下位色
+            return Color.Lerp(colors[0], Color.white, BandPaleAmount);
+        }
 
         // バー色を少し明るくした数字フォント色を返す（白方向へ寄せて視認性を上げる）
         public static Color BrighterLabelColor(Color barColor) => Color.Lerp(barColor, Color.white, 0.35f);
@@ -77,32 +107,6 @@ namespace LRCounter.Controllers.Display
                 && tracker.ThresholdPP > 0
                 && tracker.TotalPP >= tracker.ThresholdPP;
             return exceeded ? ColGreen : ColYellow;
-        }
-
-        // 帯テーブルと値から色を求める。最下端未満は先頭色、最上端以上は topColor。
-        private static Color EvalBands(ColorBand[] bands, double value, Color topColor)
-        {
-            if (value <= bands[0].Lo) return bands[0].Stops[0];
-            foreach (var band in bands)
-            {
-                if (value < band.Hi)
-                {
-                    double local = (value - band.Lo) / (band.Hi - band.Lo);
-                    return LerpStops(band.Stops, (float)local);
-                }
-            }
-            return topColor; // 最後の帯の Hi 以上＝最高ランク色
-        }
-
-        // 帯内の色ストップ配列を t(0〜1)で補間する
-        private static Color LerpStops(Color[] stops, float t)
-        {
-            if (stops.Length == 1) return stops[0];
-            t = Mathf.Clamp01(t);
-            int segs = stops.Length - 1;
-            float scaled = t * segs;
-            int i = Mathf.Min((int)scaled, segs - 1);
-            return Color.Lerp(stops[i], stops[i + 1], scaled - i);
         }
 
         // ─── スプライト・マテリアル ──────────────────────────────────────────────────

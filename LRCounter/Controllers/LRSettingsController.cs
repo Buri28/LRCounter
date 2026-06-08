@@ -1,6 +1,7 @@
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.ViewControllers;
 using LRCounter.Configuration;
+using LRCounter.Controllers.Display;
 using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
@@ -100,7 +101,7 @@ namespace LRCounter.Controllers
 
         // バー下端にマッピングする精度(%)。左右の矢印で 90/80/50/0 を切り替える。
         [UIValue("acc-min-options")]
-        public List<object> AccBarMinOptions { get; } = new List<object> { 90, 80, 50, 0 };
+        public List<object> AccBarMinOptions { get; } = new List<object> { 0, 50, 80, 90 };
 
         [UIValue("acc-min")]
         public int AccBarMin
@@ -140,7 +141,7 @@ namespace LRCounter.Controllers
 
         // バー下端にマッピングする平均点。左右の矢印で 110/105 を切り替える。
         [UIValue("score-min-options")]
-        public List<object> ScoreBarMinOptions { get; } = new List<object> { 110, 105 };
+        public List<object> ScoreBarMinOptions { get; } = new List<object> { 105, 110 };
 
         [UIValue("score-min")]
         public int ScoreBarMin
@@ -171,6 +172,85 @@ namespace LRCounter.Controllers
             set { _config.TotalLabelSize = value; _config.Changed(); }
         }
 
+        // ———— 11段階バー色（精度バー・点数バー共通） ————
+        // hex文字列で保持する設定値を Color として出し入れする（color-setting 用）。
+        [UIValue("color-red")]
+        public Color Color00Red
+        {
+            get => LRDisplayCommon.ParseHex(_config.Color00Red);
+            set { _config.Color00Red = LRDisplayCommon.ToHex(value); _config.Changed(); }
+        }
+
+        [UIValue("color-orange")]
+        public Color Color01Orange
+        {
+            get => LRDisplayCommon.ParseHex(_config.Color01Orange);
+            set { _config.Color01Orange = LRDisplayCommon.ToHex(value); _config.Changed(); }
+        }
+
+        [UIValue("color-yellow")]
+        public Color Color02Yellow
+        {
+            get => LRDisplayCommon.ParseHex(_config.Color02Yellow);
+            set { _config.Color02Yellow = LRDisplayCommon.ToHex(value); _config.Changed(); }
+        }
+
+        [UIValue("color-green")]
+        public Color Color03Green
+        {
+            get => LRDisplayCommon.ParseHex(_config.Color03Green);
+            set { _config.Color03Green = LRDisplayCommon.ToHex(value); _config.Changed(); }
+        }
+
+        [UIValue("color-blue")]
+        public Color Color04Blue
+        {
+            get => LRDisplayCommon.ParseHex(_config.Color04Blue);
+            set { _config.Color04Blue = LRDisplayCommon.ToHex(value); _config.Changed(); }
+        }
+
+        [UIValue("color-magenta")]
+        public Color Color05Magenta
+        {
+            get => LRDisplayCommon.ParseHex(_config.Color05Magenta);
+            set { _config.Color05Magenta = LRDisplayCommon.ToHex(value); _config.Changed(); }
+        }
+
+        [UIValue("color-cyan")]
+        public Color Color06Cyan
+        {
+            get => LRDisplayCommon.ParseHex(_config.Color06Cyan);
+            set { _config.Color06Cyan = LRDisplayCommon.ToHex(value); _config.Changed(); }
+        }
+
+        [UIValue("color-lightblue")]
+        public Color Color07LightBlue
+        {
+            get => LRDisplayCommon.ParseHex(_config.Color07LightBlue);
+            set { _config.Color07LightBlue = LRDisplayCommon.ToHex(value); _config.Changed(); }
+        }
+
+        [UIValue("color-skin")]
+        public Color Color08Skin
+        {
+            get => LRDisplayCommon.ParseHex(_config.Color08Skin);
+            set { _config.Color08Skin = LRDisplayCommon.ToHex(value); _config.Changed(); }
+        }
+
+        [UIValue("color-purple")]
+        public Color Color09Purple
+        {
+            get => LRDisplayCommon.ParseHex(_config.Color09Purple);
+            set { _config.Color09Purple = LRDisplayCommon.ToHex(value); _config.Changed(); }
+        }
+
+        [UIValue("color-grey")]
+        public Color Color10Grey
+        {
+            get => LRDisplayCommon.ParseHex(_config.Color10Grey);
+            set { _config.Color10Grey = LRDisplayCommon.ToHex(value); _config.Changed(); }
+        }
+
         // ———— Reset Button ————
         [UIAction("reset-settings")]
         public void ResetSettings()
@@ -199,6 +279,17 @@ namespace LRCounter.Controllers
             _config.TotalLabelX = d.TotalLabelX;
             _config.TotalLabelY = d.TotalLabelY;
             _config.TotalLabelSize = d.TotalLabelSize;
+            _config.Color00Red = d.Color00Red;
+            _config.Color01Orange = d.Color01Orange;
+            _config.Color02Yellow = d.Color02Yellow;
+            _config.Color03Green = d.Color03Green;
+            _config.Color04Blue = d.Color04Blue;
+            _config.Color05Magenta = d.Color05Magenta;
+            _config.Color06Cyan = d.Color06Cyan;
+            _config.Color07LightBlue = d.Color07LightBlue;
+            _config.Color08Skin = d.Color08Skin;
+            _config.Color09Purple = d.Color09Purple;
+            _config.Color10Grey = d.Color10Grey;
             _config.Changed();
 
             NotifyPropertyChanged(nameof(Enabled));
@@ -220,6 +311,17 @@ namespace LRCounter.Controllers
             NotifyPropertyChanged(nameof(TotalLabelX));
             NotifyPropertyChanged(nameof(TotalLabelY));
             NotifyPropertyChanged(nameof(TotalLabelSize));
+            NotifyPropertyChanged(nameof(Color00Red));
+            NotifyPropertyChanged(nameof(Color01Orange));
+            NotifyPropertyChanged(nameof(Color02Yellow));
+            NotifyPropertyChanged(nameof(Color03Green));
+            NotifyPropertyChanged(nameof(Color04Blue));
+            NotifyPropertyChanged(nameof(Color05Magenta));
+            NotifyPropertyChanged(nameof(Color06Cyan));
+            NotifyPropertyChanged(nameof(Color07LightBlue));
+            NotifyPropertyChanged(nameof(Color08Skin));
+            NotifyPropertyChanged(nameof(Color09Purple));
+            NotifyPropertyChanged(nameof(Color10Grey));
             Plugin.Log.Info("Settings reset to defaults.");
         }
     }

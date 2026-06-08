@@ -28,21 +28,40 @@ namespace LRCounter.Configuration
         public virtual float AccBarY { get; set; } = 0.35f;       // バー下端のY
         public virtual float AccBarHeight { get; set; } = 0.50f;  // バーの高さ
         public virtual float AccBarWidth { get; set; } = 0.01f;   // バーの幅
-        public virtual int AccBarMin { get; set; } = 90;          // バー下端にマッピングする精度(%)。選択肢: 90/80/50/0
+        public virtual int AccBarMin { get; set; } = 50;          // バー下端にマッピングする精度(%)。選択肢: 90/80/50/0
 
         // ─── 平均点数バー(内側)の配置（いずれもCanvas比 0〜1） ──────────────
         public virtual bool ShowScoreBar { get; set; } = true;    // 表示ON/OFF
         public virtual float ScoreBarSpacing { get; set; } = 0.30f; // 中央(0.5)を起点とした左右バーの間隔
         public virtual float ScoreBarY { get; set; } = 0.45f;
-        public virtual float ScoreBarHeight { get; set; } = 0.27f;
+        public virtual float ScoreBarHeight { get; set; } = 0.35f;
         public virtual float ScoreBarWidth { get; set; } = 0.01f;
-        public virtual int ScoreBarMin { get; set; } = 110;       // バー下端にマッピングする平均点。選択肢: 110/105
+        public virtual int ScoreBarMin { get; set; } = 105;       // バー下端にマッピングする平均点。選択肢: 110/105
 
         // ─── 合算ラベル（左右合計の精度・PPを中央上部に表示） ───────────────
         public virtual bool ShowTotalLabel { get; set; } = true; // 表示ON/OFF
         public virtual float TotalLabelX { get; set; } = 0.5f;   // 中心X（Canvas幅比）
         public virtual float TotalLabelY { get; set; } = 0.90f;  // 下端Y（Canvas高さ比）大きいほど上
         public virtual float TotalLabelSize { get; set; } = 4.0f;  // フォントサイズ
+
+        // ─── 11段階のバー色（精度バー・点数バー共通） ───────────────────────────
+        // 各バンドの「原色（上端側）」を hex(#RRGGBB) で保持。下端側は自動で白寄りに淡くなる。
+        // index 昇順＝値の昇順。最後のグレーは満点(100% / 115)時のみ適用。
+        //   00 赤(0〜49% / 105)      01 橙(50〜69% / 106)   02 黄(70〜79% / 107)
+        //   03 緑(80〜89% / 108)      04 青(90〜94% / 109)   05 マゼンタ(95% / 110)
+        //   06 シアン(96% / 111)      07 水色(97% / 112)     08 肌色(98% / 113)
+        //   09 紫(99% / 114)      10 グレー(100% / 115・満点のみ)
+        public virtual string Color00Red { get; set; } = "#FF0000";
+        public virtual string Color01Orange { get; set; } = "#ff7300";
+        public virtual string Color02Yellow { get; set; } = "#FFFF00";
+        public virtual string Color03Green { get; set; } = "#00ff00";
+        public virtual string Color04Blue { get; set; } = "#0000ff";
+        public virtual string Color05Magenta { get; set; } = "#ff00dd";
+        public virtual string Color06Cyan { get; set; } = "#1AE6E6";
+        public virtual string Color07LightBlue { get; set; } = "#007df9";
+        public virtual string Color08Skin { get; set; } = "#fcb880";
+        public virtual string Color09Purple { get; set; } = "#a600ff";
+        public virtual string Color10Grey { get; set; } = "#E6E6E6";
 
         // Changed イベント（IPA が生成するストアのためのメソッド）
         public virtual void Changed() { }
