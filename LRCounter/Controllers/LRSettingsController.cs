@@ -1,6 +1,7 @@
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.ViewControllers;
 using LRCounter.Configuration;
+using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
 
@@ -97,6 +98,17 @@ namespace LRCounter.Controllers
             set { _config.AccBarWidth = value; _config.Changed(); }
         }
 
+        // バー下端にマッピングする精度(%)。左右の矢印で 90/80/50/0 を切り替える。
+        [UIValue("acc-min-options")]
+        public List<object> AccBarMinOptions { get; } = new List<object> { 90, 80, 50, 0 };
+
+        [UIValue("acc-min")]
+        public int AccBarMin
+        {
+            get => _config.AccBarMin;
+            set { _config.AccBarMin = value; _config.Changed(); }
+        }
+
         // ———— Score bar layout ————
         [UIValue("score-spacing")]
         public float ScoreBarSpacing
@@ -124,6 +136,17 @@ namespace LRCounter.Controllers
         {
             get => _config.ScoreBarWidth;
             set { _config.ScoreBarWidth = value; _config.Changed(); }
+        }
+
+        // バー下端にマッピングする平均点。左右の矢印で 110/105 を切り替える。
+        [UIValue("score-min-options")]
+        public List<object> ScoreBarMinOptions { get; } = new List<object> { 110, 105 };
+
+        [UIValue("score-min")]
+        public int ScoreBarMin
+        {
+            get => _config.ScoreBarMin;
+            set { _config.ScoreBarMin = value; _config.Changed(); }
         }
 
         // ———— Total label (combined %/PP) ————
@@ -167,10 +190,12 @@ namespace LRCounter.Controllers
             _config.AccBarY = d.AccBarY;
             _config.AccBarHeight = d.AccBarHeight;
             _config.AccBarWidth = d.AccBarWidth;
+            _config.AccBarMin = d.AccBarMin;
             _config.ScoreBarSpacing = d.ScoreBarSpacing;
             _config.ScoreBarY = d.ScoreBarY;
             _config.ScoreBarHeight = d.ScoreBarHeight;
             _config.ScoreBarWidth = d.ScoreBarWidth;
+            _config.ScoreBarMin = d.ScoreBarMin;
             _config.TotalLabelX = d.TotalLabelX;
             _config.TotalLabelY = d.TotalLabelY;
             _config.TotalLabelSize = d.TotalLabelSize;
@@ -186,10 +211,12 @@ namespace LRCounter.Controllers
             NotifyPropertyChanged(nameof(AccBarY));
             NotifyPropertyChanged(nameof(AccBarHeight));
             NotifyPropertyChanged(nameof(AccBarWidth));
+            NotifyPropertyChanged(nameof(AccBarMin));
             NotifyPropertyChanged(nameof(ScoreBarSpacing));
             NotifyPropertyChanged(nameof(ScoreBarY));
             NotifyPropertyChanged(nameof(ScoreBarHeight));
             NotifyPropertyChanged(nameof(ScoreBarWidth));
+            NotifyPropertyChanged(nameof(ScoreBarMin));
             NotifyPropertyChanged(nameof(TotalLabelX));
             NotifyPropertyChanged(nameof(TotalLabelY));
             NotifyPropertyChanged(nameof(TotalLabelSize));

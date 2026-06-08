@@ -18,9 +18,13 @@ namespace LRCounter.Controllers.Display
         private TMP_Text? _leftCutLabel;
         private TMP_Text? _rightCutLabel;
 
-        // 表示する点数の範囲。下端=Min、上端=Max にマッピングする
-        private const double ScoreDisplayMin = 110.0;
+        // 表示する点数の範囲。下端=Min、上端=Max にマッピングする。
+        // 下端は設定(ScoreBarMin)で 110/105 から選べる。
+        private double ScoreDisplayMin => _config.ScoreBarMin;
         private const double ScoreDisplayMax = 115.0;
+
+        // 110点の基準線の色（不透明な黒で強調）
+        private static readonly Color ScoreLineColorBold = new Color(0f, 0f, 0f, 1f);
 
         private const float CutLabelGap = 0.0f;        // ラベルとバー上端の隙間
         private const float CutLabelHeight = 0.05f;    // ラベルの高さ
@@ -102,12 +106,19 @@ namespace LRCounter.Controllers.Display
             fill.fillAmount = 0f;
             LRDisplayCommon.ApplyNoGlow(fill);
 
-            // --- 目盛り線（1点刻み）。塗りつぶしの上に重ねるため fill より後に追加 ---
-            int scoreDivisions = (int)(ScoreDisplayMax - ScoreDisplayMin); // 5分割 → 内側に4本
+            // --- 目盛り線。下限が変わってもバーは常に5等分（内側に4本）にする ---
+            const int scoreDivisions = 5;
             for (int i = 1; i < scoreDivisions; i++)
             {
                 float frac = i / (float)scoreDivisions;
                 LRDisplayCommon.CreateGridLine(bgRT, layer, side, i, frac, LRDisplayCommon.GridLineHalfHeight, LRDisplayCommon.GridLineColor);
+            }
+
+            // --- 110点の基準線（不透明な黒）。下限が110より下のときだけ目盛りと別に1本引く ---
+            if (ScoreDisplayMin < 110.0)
+            {
+                float frac110 = ScoreToFill(110.0);
+                LRDisplayCommon.CreateGridLine(bgRT, layer, side, 110, frac110, LRDisplayCommon.GridLineHalfHeight, ScoreLineColorBold);
             }
 
             return fill;
@@ -163,7 +174,7 @@ namespace LRCounter.Controllers.Display
         }
 
         // 平均点数を表示レンジで正規化して塗りつぶし量(0〜1)に変換する
-        private static float ScoreToFill(double score)
+        private float ScoreToFill(double score)
         {
             return Mathf.Clamp01((float)((score - ScoreDisplayMin) / (ScoreDisplayMax - ScoreDisplayMin)));
         }

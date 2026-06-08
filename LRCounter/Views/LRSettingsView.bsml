@@ -13,6 +13,27 @@
                     bind-value='true'
                     hover-hint='Enable or disable the mod.' />
 
+    <!-- ───────── Bar Range (譜面ごとに切り替えやすいよう最上部に配置) ───────── -->
+    <horizontal spacing='1' pad='0' pad-top='1'>
+      <text text='[Bar Range]' color='#7CFC00' />
+    </horizontal>
+
+    <!-- 精度バー下端にマッピングする精度(%)。左右矢印で 90/80/50/0 を切り替え -->
+    <list-setting text='Acc Min (Bottom)'
+                    value='acc-min'
+                    options='acc-min-options'
+                    apply-on-change='true'
+                    bind-value='true'
+                    hover-hint='Accuracy (%) mapped to the bottom of the accuracy bar. Lower = wider range shown.' />
+
+    <!-- 平均点数バー下端にマッピングする平均点。左右矢印で 110/105 を切り替え -->
+    <list-setting text='Score Min (Bottom)'
+                    value='score-min'
+                    options='score-min-options'
+                    apply-on-change='true'
+                    bind-value='true'
+                    hover-hint='Average cut score mapped to the bottom of the score bar. Lower = wider range shown.' />
+
     <!-- ───────── Common ───────── -->
     <horizontal spacing='1' pad='0' pad-top='1'>
       <text text='[Common]' color='#00FFFF' />
