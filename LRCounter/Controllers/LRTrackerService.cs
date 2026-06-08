@@ -137,7 +137,11 @@ namespace LRCounter.Controllers
                 RightTracker.Accuracy * 100.0,
                 LeftTracker.PP,
                 RightTracker.PP,
-                StarRating > 0);
+                StarRating > 0,
+                LeftTracker.CutNotes,
+                LeftTracker.TotalNotes,
+                RightTracker.CutNotes,
+                RightTracker.TotalNotes);
 
             GC.SuppressFinalize(this);
         }

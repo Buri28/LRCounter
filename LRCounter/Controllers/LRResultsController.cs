@@ -4,13 +4,14 @@ using LRCounter.Configuration;
 using LRCounter.Controllers.Display;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using Zenject;
 
 namespace LRCounter.Controllers
 {
-    // リザルト画面（ステージクリア）の上部に、左右の平均精度とPPを表示する（メニュースコープ）。
+    // リザルト画面（ステージクリア）の上部に、左右の結果を中央の縦線で区切って表示する（メニュースコープ）。
     // 値は LRResultStore（App スコープ）経由でゲームプレイシーンから受け取る。
-    // 表示はゲーム画面に合わせ、左右それぞれ「L/R → PP → 精度」の3段（PPが上）で出す。
+    // 各列は2段：1段目「精度% (PP)」／2段目「グッドカット数 / 全ノーツ数」。
     public class LRResultsController : IInitializable, IDisposable
     {
         private readonly ResultsViewController _resultsViewController;
@@ -19,10 +20,12 @@ namespace LRCounter.Controllers
 
         private TMP_Text? _leftText;
         private TMP_Text? _rightText;
+        private Image? _divider;
 
         // 左右列の中央Xからの横オフセット（バナー上の空きスペースに左右で並べる）
-        private const float ColumnOffsetX = 14f;
-        private const float TopOffsetY = 14f; // 上端からの位置（正で上端より上）
+        private const float ColumnOffsetX = 18f;
+        private const float TopOffsetY = 7f; // 上端からの位置（正で上端より上。小さいほど下）
+        private const float DividerHeight = 16f; // 中央の縦区切り線の高さ
 
         [Inject]
         public LRResultsController(
@@ -45,6 +48,7 @@ namespace LRCounter.Controllers
             _resultsViewController.didActivateEvent -= OnResultsActivated;
             if (_leftText != null) GameObject.Destroy(_leftText.gameObject);
             if (_rightText != null) GameObject.Destroy(_rightText.gameObject);
+            if (_divider != null) GameObject.Destroy(_divider.gameObject);
         }
 
         // リザルト画面が表示されるたびに呼ばれる
@@ -55,8 +59,28 @@ namespace LRCounter.Controllers
             {
                 _leftText = CreateHandText("LRResultL", -ColumnOffsetX);
                 _rightText = CreateHandText("LRResultR", ColumnOffsetX);
+                _divider = CreateDivider("LRResultDivider");
             }
             UpdateTexts();
+        }
+
+        // 中央の縦区切り線を作る
+        private Image CreateDivider(string name)
+        {
+            var go = new GameObject(name);
+            var rt = go.AddComponent<RectTransform>();
+            rt.SetParent(_resultsViewController.transform, false);
+            rt.anchorMin = new Vector2(0.5f, 1f);
+            rt.anchorMax = new Vector2(0.5f, 1f);
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(0f, TopOffsetY);
+            rt.sizeDelta = new Vector2(0.4f, DividerHeight);
+
+            var img = go.AddComponent<Image>();
+            img.sprite = LRDisplayCommon.CreateWhiteSprite();
+            img.color = new Color(1f, 1f, 1f, 0.5f);
+            LRDisplayCommon.ApplyNoGlow(img);
+            return img;
         }
 
         // 1列ぶん（中央上部から xOffset ずらした位置）のテキストを作る
@@ -98,15 +122,15 @@ namespace LRCounter.Controllers
 
             _leftText.color = LRDisplayCommon.LeftHandColorDefault;
             _rightText.color = LRDisplayCommon.RightHandColorDefault;
-            _leftText.text = FormatHand("L", _store.LeftPP, _store.LeftAccuracyPercent);
-            _rightText.text = FormatHand("R", _store.RightPP, _store.RightAccuracyPercent);
+            _leftText.text = FormatHand(_store.LeftAccuracyPercent, _store.LeftPP, _store.LeftCutNotes, _store.LeftTotalNotes);
+            _rightText.text = FormatHand(_store.RightAccuracyPercent, _store.RightPP, _store.RightCutNotes, _store.RightTotalNotes);
         }
 
-        // 「L/R → PP → 精度」の3段（PPが上＝ゲーム画面と同じ並び）。ランク外はPPを "---"。
-        private string FormatHand(string label, double pp, double accPercent)
+        // 2段表示。1段目「精度% (PP)」／2段目「グッドカット数 / 全ノーツ数」。ランク外はPPを省略。
+        private string FormatHand(double accPercent, double pp, int cutNotes, int totalNotes)
         {
-            string ppLine = _store.HasStar ? $"{pp:F1}pp" : "---";
-            return $"{label}\n{ppLine}\n{accPercent:F2}%";
+            string ppPart = _store.HasStar ? $" ({pp:F1}pp)" : "";
+            return $"{accPercent:F2}%{ppPart}\n{cutNotes} / {totalNotes}";
         }
     }
 }
