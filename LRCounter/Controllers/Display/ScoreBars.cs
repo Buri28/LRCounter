@@ -106,19 +106,17 @@ namespace LRCounter.Controllers.Display
             fill.fillAmount = 0f;
             LRDisplayCommon.ApplyNoGlow(fill);
 
-            // --- 目盛り線。下限が変わってもバーは常に5等分（内側に4本）にする ---
-            const int scoreDivisions = 5;
+            // --- 目盛り線（1点刻み）。下限〜115を1点ごとに区切る（min=110→5分割 / min=105→10分割）。
+            //     110点の線だけは基準として不透明な黒で強調する ---
+            int scoreDivisions = (int)(ScoreDisplayMax - ScoreDisplayMin);
             for (int i = 1; i < scoreDivisions; i++)
             {
                 float frac = i / (float)scoreDivisions;
-                LRDisplayCommon.CreateGridLine(bgRT, layer, side, i, frac, LRDisplayCommon.GridLineHalfHeight, LRDisplayCommon.GridLineColor);
-            }
-
-            // --- 110点の基準線（不透明な黒）。下限が110より下のときだけ目盛りと別に1本引く ---
-            if (ScoreDisplayMin < 110.0)
-            {
-                float frac110 = ScoreToFill(110.0);
-                LRDisplayCommon.CreateGridLine(bgRT, layer, side, 110, frac110, LRDisplayCommon.GridLineHalfHeight, ScoreLineColorBold);
+                double lineScore = ScoreDisplayMin + i; // この目盛りが表す点数（1分割=1点）
+                Color lineColor = System.Math.Abs(lineScore - 110.0) < 0.5
+                    ? ScoreLineColorBold
+                    : LRDisplayCommon.GridLineColor;
+                LRDisplayCommon.CreateGridLine(bgRT, layer, side, i, frac, LRDisplayCommon.GridLineHalfHeight, lineColor);
             }
 
             return fill;

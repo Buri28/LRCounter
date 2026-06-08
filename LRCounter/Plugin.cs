@@ -28,6 +28,7 @@ namespace LRCounter
         {
             Log            = logger;
             Config         = conf.Generated<PluginConfig>(); // IPAが設定ファイルを自動生成・ロード
+            PluginConfig.Instance = Config;                  // 静的アクセス用（LRDisplayCommon のバー色取得など）
             HarmonyInstance = new Harmony("com.buri28.lrcounter");
 
             zenjector.UseLogger(logger);
