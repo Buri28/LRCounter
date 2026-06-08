@@ -95,8 +95,8 @@ namespace LRCounter.Controllers.Display
             // %ラベル（フォント色はバー色を少し明るく）
             _leftLabel!.text = $"{leftAcc:F1}%";
             _rightLabel!.text = $"{rightAcc:F1}%";
-            _leftLabel!.color = LRDisplayCommon.BrighterLabelColor(leftBarColor);
-            _rightLabel!.color = LRDisplayCommon.BrighterLabelColor(rightBarColor);
+            _leftLabel!.color = leftBarColor;
+            _rightLabel!.color = rightBarColor;
 
             // PPラベル（色は精度と分離：通常黄／threshold超過で緑）。アンランクなら非表示。
             bool hasStar = _tracker.StarRating > 0;
