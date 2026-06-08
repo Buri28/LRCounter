@@ -10,15 +10,24 @@ namespace LRCounter.Controllers
         public double RightAccuracyPercent { get; private set; } // 右手の平均精度(%)
         public double LeftPP { get; private set; }         // 左手のPP
         public double RightPP { get; private set; }        // 右手のPP
+        public int LeftCutNotes { get; private set; }       // 左手のグッドカット数（ミス・バッドカットを除く）
+        public int LeftTotalNotes { get; private set; }     // 左手の全ノーツ数
+        public int RightCutNotes { get; private set; }      // 右手のグッドカット数（ミス・バッドカットを除く）
+        public int RightTotalNotes { get; private set; }    // 右手の全ノーツ数
 
         // 曲終了時に呼ばれ、結果を保存する
-        public void Set(double leftAccPercent, double rightAccPercent, double leftPP, double rightPP, bool hasStar)
+        public void Set(double leftAccPercent, double rightAccPercent, double leftPP, double rightPP, bool hasStar,
+            int leftCutNotes, int leftTotalNotes, int rightCutNotes, int rightTotalNotes)
         {
             LeftAccuracyPercent = leftAccPercent;
             RightAccuracyPercent = rightAccPercent;
             LeftPP = leftPP;
             RightPP = rightPP;
             HasStar = hasStar;
+            LeftCutNotes = leftCutNotes;
+            LeftTotalNotes = leftTotalNotes;
+            RightCutNotes = rightCutNotes;
+            RightTotalNotes = rightTotalNotes;
             HasResult = true;
         }
     }
