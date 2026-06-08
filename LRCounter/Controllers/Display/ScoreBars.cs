@@ -167,7 +167,7 @@ namespace LRCounter.Controllers.Display
             if (label != null)
             {
                 label.text = averageCutScore.ToString("F1");
-                label.color = LRDisplayCommon.BrighterLabelColor(barColor);
+                label.color = barColor;
             }
         }
 

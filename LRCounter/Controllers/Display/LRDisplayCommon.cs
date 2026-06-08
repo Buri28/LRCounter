@@ -96,9 +96,6 @@ namespace LRCounter.Controllers.Display
             return Color.Lerp(colors[0], Color.white, BandPaleAmount);
         }
 
-        // バー色を少し明るくした数字フォント色を返す（白方向へ寄せて視認性を上げる）
-        public static Color BrighterLabelColor(Color barColor) => Color.Lerp(barColor, Color.white, 0.35f);
-
         // PPラベルの色：通常は黄、threshold(底上げライン)を超えたら緑。
         // threshold未確定(0)やアンランクのときは黄のまま。
         public static Color PPColor(LRTrackerService tracker)

@@ -52,8 +52,8 @@ namespace LRCounter.Controllers.Display
             bool hasStar = _tracker.StarRating > 0;
             double totalAccPct = _tracker.TotalAccuracy * 100.0;
 
-            // %は精度帯色、PPは黄/緑（threshold超過で緑）。PPと%で色を分けるためリッチテキストで着色。
-            Color accColor = LRDisplayCommon.BrighterLabelColor(LRDisplayCommon.AccuracyBarColor(totalAccPct));
+            // %は精度帯色（バー色と同色）、PPは黄/緑（threshold超過で緑）。PPと%で色を分けるためリッチテキストで着色。
+            Color accColor = LRDisplayCommon.AccuracyBarColor(totalAccPct);
             string accHex = ColorUtility.ToHtmlStringRGB(accColor);
             string accLine = $"<color=#{accHex}>{totalAccPct:F2}%</color>";
 
