@@ -51,14 +51,14 @@ namespace LRCounter.Configuration
         //   03 緑(80〜89% / 108)      04 青(90〜94% / 109)   05 マゼンタ(95% / 110)
         //   06 シアン(96% / 111)      07 水色(97% / 112)     08 肌色(98% / 113)
         //   09 紫(99% / 114)      10 グレー(100% / 115・満点のみ)
-        public virtual string Color00Red { get; set; } = "#FF0000";
-        public virtual string Color01Orange { get; set; } = "#ff7300";
-        public virtual string Color02Yellow { get; set; } = "#FFFF00";
+        public virtual string Color00Red { get; set; } = "#ff0000";
+        public virtual string Color01Orange { get; set; } = "#ff7f00";
+        public virtual string Color02Yellow { get; set; } = "#ffff00";
         public virtual string Color03Green { get; set; } = "#00ff00";
         public virtual string Color04Blue { get; set; } = "#0000ff";
         public virtual string Color05Magenta { get; set; } = "#ff00dd";
         public virtual string Color06Cyan { get; set; } = "#1AE6E6";
-        public virtual string Color07LightBlue { get; set; } = "#007df9";
+        public virtual string Color07LightBlue { get; set; } = "#007fff";
         public virtual string Color08Skin { get; set; } = "#fcb880";
         public virtual string Color09Purple { get; set; } = "#a600ff";
         public virtual string Color10Grey { get; set; } = "#E6E6E6";
