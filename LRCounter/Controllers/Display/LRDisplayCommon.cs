@@ -137,7 +137,7 @@ namespace LRCounter.Controllers.Display
         // ─── 目盛り線 ────────────────────────────────────────────────────────────────
 
         // 目盛り横線を1本生成する（frac=0で下端, 1で上端）。halfHeightで太さ、colorで色を指定。
-        public static void CreateGridLine(RectTransform barRT, int layer, string side, int idx, float frac, float halfHeight, Color color)
+        public static Image CreateGridLine(RectTransform barRT, int layer, string side, int idx, float frac, float halfHeight, Color color)
         {
             var go = new GameObject($"LRGrid_{side}_{idx}");
             go.layer = layer;
@@ -152,6 +152,7 @@ namespace LRCounter.Controllers.Display
             img.sprite = CreateWhiteSprite();
             img.color = color;
             ApplyNoGlow(img);
+            return img;
         }
 
         // Transformのアクティブ切り替え（null安全）
