@@ -36,13 +36,35 @@ namespace LRCounter.Controllers.Display
         private float _rightFlashEnd = -1f;
         private const float FlashDuration = 0.4f;
 
-        // 精度バーが表示する精度の範囲(%)。下端=Min、上端=Max にマッピングする。
-        // 下端は設定(AccBarMin)で 90/80/50/0 から選べる。
-        private double AccDisplayMin => _config.AccBarMin;
+        // 精度バーが表示する精度の範囲(%)。下端=low、上端=low+幅 にマッピングする。
         private const double AccDisplayMax = 100.0;
+
+        // ─── 動的レンジ（隣接する10%窓を上下にスライド・左右共通） ───────────────────────
+        // 左右のバーは同じ窓[low, low+幅]を共有する。切り替え条件は次のとおり（チラつき防止）。
+        // ・下へ: 両手とも下端を割り、後から割った方も含め両手がそれぞれ NotesStable ノーツ維持したら1段下へ。
+        // ・上へ: 両手とも上端を超え、後から超えた方も含め両手がそれぞれ NotesStable ノーツ維持したら1段上へ。
+        // ・下限は0%まで下がる。動的レンジOFF(_config.AccBarDynamic=false)時は [AccBarMin,100] 固定。
+        private const double WindowHeight = 10.0;            // 1窓あたりの精度幅(%)
+        private const double MaxWindowLow = AccDisplayMax - WindowHeight; // 最上段の窓の下端(=90)
+        private const int NotesStable = 5;                   // 切り替えに必要な「窓外維持」ノーツ数（手ごとに数える）
+        private double _windowLow;                           // 左右共通の窓の下端
+        // 窓外（下端割れ/上端超え）を各手のノーツで連続カウント。窓内に戻る or 窓が動いたら0に戻す。
+        private int _leftBelowCount;
+        private int _rightBelowCount;
+        private int _leftAboveCount;
+        private int _rightAboveCount;
+        // 窓の更新は「その手で新しくノーツを処理したとき」だけ行う（手ごとにノーツを数えるため）
+        private int _leftPrevNotes;
+        private int _rightPrevNotes;
+
+        // 窓に表示する精度幅。動的=10%固定 / 静的=AccBarMin〜100。
+        private double WindowSpan => _config.AccBarDynamic ? WindowHeight : (AccDisplayMax - _config.AccBarMin);
 
         // 目盛り：10%刻みで10分割（線は9本）
         private const int GridDivisions = 10;
+        // 窓スライド時に色を更新するため目盛り線を保持（index0=frac0.1 … index8=frac0.9）
+        private readonly Image?[] _leftGridLines = new Image?[GridDivisions - 1];
+        private readonly Image?[] _rightGridLines = new Image?[GridDivisions - 1];
         private static readonly Color GridLineColorBold = new Color(0f, 0f, 0f, 1f); // 95%強調線（不透明黒）
 
         // 目標ライン（必要精度）
@@ -57,6 +79,9 @@ namespace LRCounter.Controllers.Display
             _tracker = tracker;
             _leftColor = leftColor;
             _rightColor = rightColor;
+
+            // 初期の窓: 動的なら最上段[90,100]、静的なら[AccBarMin,100]。
+            _windowLow = config.AccBarDynamic ? MaxWindowLow : config.AccBarMin;
         }
 
         public void Build(RectTransform canvasRT, int layer)
@@ -84,9 +109,32 @@ namespace LRCounter.Controllers.Display
             _prevLeftAcc = leftAcc;
             _prevRightAcc = rightAcc;
 
-            // 塗りつぶし量と帯色
-            _leftFill!.fillAmount = AccToFill(leftAcc);
-            _rightFill!.fillAmount = AccToFill(rightAcc);
+            // 動的レンジ: その手で新しくノーツを処理したときだけ窓判定する（手ごとに5ノーツ数えるため）。
+            // 動いたら目盛り色を更新する。
+            if (_config.AccBarDynamic)
+            {
+                int leftNotes = _tracker.LeftTracker.TotalNotes;
+                int rightNotes = _tracker.RightTracker.TotalNotes;
+                bool leftNew = leftNotes != _leftPrevNotes;
+                bool rightNew = rightNotes != _rightPrevNotes;
+                _leftPrevNotes = leftNotes;
+                _rightPrevNotes = rightNotes;
+
+                // その手にノーツが来たときだけ「窓外維持」カウントを更新する
+                if (leftNew) UpdateOutsideCount(leftAcc, ref _leftBelowCount, ref _leftAboveCount);
+                if (rightNew) UpdateOutsideCount(rightAcc, ref _rightBelowCount, ref _rightAboveCount);
+
+                // 両手が同方向で揃ったら共通の窓を1段スライド。動いたら全目盛り色を更新。
+                if ((leftNew || rightNew) && TryShiftWindow())
+                {
+                    RefreshGridColors(_leftGridLines, _windowLow);
+                    RefreshGridColors(_rightGridLines, _windowLow);
+                }
+            }
+
+            // 塗りつぶし量と帯色（左右とも共通の窓を使う）
+            _leftFill!.fillAmount = AccToFill(leftAcc, _windowLow);
+            _rightFill!.fillAmount = AccToFill(rightAcc, _windowLow);
             Color leftBarColor = LRDisplayCommon.AccuracyBarColor(leftAcc);
             Color rightBarColor = LRDisplayCommon.AccuracyBarColor(rightAcc);
             _leftFill!.color = leftBarColor;
@@ -181,11 +229,13 @@ namespace LRCounter.Controllers.Display
             LRDisplayCommon.ApplyNoGlow(fill);
 
             // --- 目盛り線（10%刻み）。塗りつぶしの上に重ねるため fill より後に bg の子として追加 ---
+            double gridLow = _windowLow;
+            var gridLines = isLeft ? _leftGridLines : _rightGridLines;
             for (int i = 1; i < GridDivisions; i++)
             {
                 float frac = i / (float)GridDivisions;
-                int pct = Mathf.RoundToInt((float)(AccDisplayMin + frac * (AccDisplayMax - AccDisplayMin)));
-                LRDisplayCommon.CreateGridLine(bgRT, layer, side, i, frac, LRDisplayCommon.GridLineHalfHeight, GridLineColorFor(pct));
+                int pct = Mathf.RoundToInt((float)(gridLow + frac * WindowSpan));
+                gridLines[i - 1] = LRDisplayCommon.CreateGridLine(bgRT, layer, side, i, frac, LRDisplayCommon.GridLineHalfHeight, GridLineColorFor(pct));
             }
 
             // --- フラッシュオーバーレイ（精度低下時に赤く光る。初期アルファ0） ---
@@ -278,7 +328,8 @@ namespace LRCounter.Controllers.Display
             if (!show) return;
 
             double reqAccPct = PPCalculator.AccuracyForPP(threshold, star) * 100.0;
-            float frac = AccToFill(reqAccPct);
+            // 目標ラインも共通の窓に合わせて配置する
+            float frac = AccToFill(reqAccPct, _windowLow);
             SetTargetLineFrac(_leftTargetLine, frac);
             SetTargetLineFrac(_rightTargetLine, frac);
         }
@@ -291,10 +342,60 @@ namespace LRCounter.Controllers.Display
             rt.anchorMax = new Vector2(1f, frac);
         }
 
-        // 精度(%)を表示レンジで正規化して塗りつぶし量(0〜1)に変換する
-        private float AccToFill(double acc)
+        // 精度(%)を窓[low, low+幅]で正規化して塗りつぶし量(0〜1)に変換する
+        private float AccToFill(double acc, double low)
         {
-            return Mathf.Clamp01((float)((acc - AccDisplayMin) / (AccDisplayMax - AccDisplayMin)));
+            return Mathf.Clamp01((float)((acc - low) / WindowSpan));
+        }
+
+        // その手の精度が窓外（下端割れ/上端超え）にある連続ノーツ数を数える。
+        // 下端割れなら below を、上端超えなら above を加算し、もう一方と窓内復帰は0に戻す。
+        private void UpdateOutsideCount(double acc, ref int below, ref int above)
+        {
+            double high = _windowLow + WindowHeight;
+            if (acc < _windowLow) { below++; above = 0; }
+            else if (acc >= high) { above++; below = 0; }
+            else { below = 0; above = 0; }
+        }
+
+        // 左右共通の窓を1段スライドできるか判定して、動かしたら true。
+        // 両手が同方向で揃い、後から窓外になった方（=カウントが小さい方）も NotesStable に達した時点で切り替わる。
+        private bool TryShiftWindow()
+        {
+            // 下へ: 両手とも下端割れを規定ノーツ維持。下限は0。
+            if (_windowLow > 0 && _leftBelowCount >= NotesStable && _rightBelowCount >= NotesStable)
+            {
+                _windowLow -= WindowHeight;
+                ResetOutsideCounts();
+                return true;
+            }
+            // 上へ: 両手とも上端超えを規定ノーツ維持。上限は最上段[90,100]。
+            if (_windowLow < MaxWindowLow && _leftAboveCount >= NotesStable && _rightAboveCount >= NotesStable)
+            {
+                _windowLow += WindowHeight;
+                ResetOutsideCounts();
+                return true;
+            }
+            return false;
+        }
+
+        // 窓が動いたらレンジが変わるので全カウントをリセットして数え直す
+        private void ResetOutsideCounts()
+        {
+            _leftBelowCount = _rightBelowCount = 0;
+            _leftAboveCount = _rightAboveCount = 0;
+        }
+
+        // 窓スライド後に目盛り線の色を新しいレンジで塗り直す
+        private void RefreshGridColors(Image?[] lines, double low)
+        {
+            for (int i = 1; i < GridDivisions; i++)
+            {
+                float frac = i / (float)GridDivisions;
+                int pct = Mathf.RoundToInt((float)(low + frac * WindowHeight));
+                var line = lines[i - 1];
+                if (line != null) line.color = GridLineColorFor(pct);
+            }
         }
 
         // 目盛り線の色を精度(%)ごとに決める。95%=黒で強調 / 98%=オレンジ / 99%=赤 / それ以外=通常
