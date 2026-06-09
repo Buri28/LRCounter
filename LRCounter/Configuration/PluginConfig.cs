@@ -15,6 +15,9 @@ namespace LRCounter.Configuration
         // MOD 有効/無効
         public virtual bool Enabled { get; set; } = true;
 
+        // 開発用デバッグラベルを非表示にする（true=消す）
+        public virtual bool HideDebugLabel { get; set; } = true;
+
         // テキストサイズ (CountersPlus 準拠の canvas 単位)
         public virtual float TextSize { get; set; } = 3f;
 
