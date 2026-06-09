@@ -51,7 +51,8 @@ namespace LRCounter.Controllers
             _components.Add(new AccuracyBars(_config, _trackerService, leftColor, rightColor));
             _components.Add(new ScoreBars(_config, _trackerService, leftColor, rightColor));
             _components.Add(new TotalLabel(_config, _trackerService));
-            _components.Add(new DebugLabel(_trackerService));
+            if (!_config.HideDebugLabel)
+                _components.Add(new DebugLabel(_trackerService));
 
             CreateDisplay();
             // ノーツを切るたびにTrackerServiceからイベントが来るので表示を更新する
