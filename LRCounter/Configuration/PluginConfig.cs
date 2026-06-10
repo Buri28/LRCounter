@@ -47,17 +47,17 @@ namespace LRCounter.Configuration
         //   03 緑(80〜89%)      04 青(90〜94%)   05 マゼンタ(95%)
         //   06 シアン(96%)      07 水色(97%)     08 肌色(98%)
         //   09 紫(99%)      10 グレー(100%・満点のみ)
-        public virtual string Color00Red { get; set; } = "#ff0000";
-        public virtual string Color01Orange { get; set; } = "#ff7f00";
-        public virtual string Color02Yellow { get; set; } = "#ffff00";
-        public virtual string Color03Green { get; set; } = "#00ff00";
-        public virtual string Color04Blue { get; set; } = "#0000ff";
-        public virtual string Color05Magenta { get; set; } = "#ff00dd";
-        public virtual string Color06Cyan { get; set; } = "#1AE6E6";
-        public virtual string Color07LightBlue { get; set; } = "#007fff";
-        public virtual string Color08Skin { get; set; } = "#fcb880";
-        public virtual string Color09Purple { get; set; } = "#a600ff";
-        public virtual string Color10Grey { get; set; } = "#E6E6E6";
+        public virtual string Color00 { get; set; } = "#ff0000";
+        public virtual string Color01 { get; set; } = "#ff7f00";
+        public virtual string Color02 { get; set; } = "#ffff00";
+        public virtual string Color03 { get; set; } = "#00ff00";
+        public virtual string Color04 { get; set; } = "#0000ff";
+        public virtual string Color05 { get; set; } = "#ff00dd";
+        public virtual string Color06 { get; set; } = "#1AE6E6";
+        public virtual string Color07 { get; set; } = "#007fff";
+        public virtual string Color08 { get; set; } = "#fcb880";
+        public virtual string Color09 { get; set; } = "#a600ff";
+        public virtual string Color10 { get; set; } = "#E6E6E6";
 
         // Changed イベント（IPA が生成するストアのためのメソッド）
         public virtual void Changed() { }

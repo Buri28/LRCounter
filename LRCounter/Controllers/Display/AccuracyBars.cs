@@ -492,8 +492,8 @@ namespace LRCounter.Controllers.Display
             double totalPP = _tracker.TotalPP;
             // PP取得：白いライン(ThresholdPP)を超えたか。Threshold未取得(0)のうちは判定しない。
             if (_tracker.ThresholdPP > 0 && totalPP >= _tracker.ThresholdPP) return BorderWhite;
-            // スコア更新：自己ベストPPを超えたか。記録なし(SelfBestPP=0)なら、得点した時点で更新扱い。
-            if (totalPP > 0 && totalPP >= _tracker.SelfBestPP) return BorderBlue;
+            // スコア更新：自己ベストPPを超えたか。自己ベスト未取得(SelfBestPP=0)のときは判定しない（誤点灯防止）。
+            if (_tracker.SelfBestPP > 0 && totalPP >= _tracker.SelfBestPP) return BorderBlue;
             return Color.clear;
         }
 

@@ -40,9 +40,13 @@ namespace LRCounter.Controllers
         public double TotalPP { get; private set; } = 0; // 現在のスコアから推定される合計PP
         public double ThresholdPP { get; private set; } = 0; // ランクアップに必要な最低PP
         public double PlayerTotalPP { get; private set; } = 0; // ScoreSaberに登録されているプレイヤーの現在合計PP
-        // この譜面の既存スコア（自己ベスト）のPP。記録が無い/取得できなかった場合は0。
+        // ローカルのPlayerDataから読んだ、この譜面の自己ベスト精度(0〜1)。未プレイ/不明は0。
+        private double _selfBestAccuracy = 0;
+        // 自己ベスト精度を現在のStarでPP換算した値。記録なし/アンランクは0。
         // 合算TotalPPがこれを超えた＝自己ベストの精度を更新したとみなす（PPは精度の単調関数）。
-        public double SelfBestPP { get; private set; } = 0;
+        public double SelfBestPP => _selfBestAccuracy > 0 && StarRating > 0
+            ? PPCalculator.CalculatePP(_selfBestAccuracy, StarRating)
+            : 0;
 
         // Threshold計算で取得するランクスコアのページ数（1ページ100件・並列取得）。101位以下の微小寄与まで
         // 反映するため深めに取る。0.1pp判定なら必要な深さは概ね rank≈250 までなので3ページ(300件)で十分。
@@ -77,6 +81,7 @@ namespace LRCounter.Controllers
         private bool _thresholdExceededFired = false;
 
         private readonly LRResultStore _resultStore;
+        private readonly PlayerDataModel _playerDataModel; // ローカルの自己ベストスコア参照用
 
         [Inject]
         public LRTrackerService(
@@ -85,7 +90,8 @@ namespace LRCounter.Controllers
             PluginConfig config,
             ScoreSaberApiService apiService,
             GameEnergyCounter energyCounter,
-            LRResultStore resultStore)
+            LRResultStore resultStore,
+            PlayerDataModel playerDataModel)
         {
             _scoreController = scoreController;
             _sceneSetupData = sceneSetupData;
@@ -93,6 +99,7 @@ namespace LRCounter.Controllers
             _apiService = apiService;
             _energyCounter = energyCounter;
             _resultStore = resultStore;
+            _playerDataModel = playerDataModel;
         }
 
         // 曲開始時にZenjectから呼ばれる。非同期でStar評価とThresholdを取得する
@@ -108,6 +115,9 @@ namespace LRCounter.Controllers
             // 体力変化イベントを購読してエネルギーが0になったらペナルティを適用
             _energyCounter.gameEnergyDidChangeEvent += OnEnergyChanged;
             Plugin.Log.Info("[LRCounter] Subscribed to scoringForNoteFinishedEvent / gameEnergyDidChangeEvent");
+
+            // ローカルの自己ベスト（PB）精度を読む（ネットワーク不要・即時）
+            ComputeSelfBestAccuracy();
 
             // Star評価をScoreSaber APIから取得する
             Plugin.Log.Info("[LRCounter] Fetching star rating from ScoreSaber...");
@@ -147,6 +157,31 @@ namespace LRCounter.Controllers
                 RightTracker.TotalNotes);
 
             GC.SuppressFinalize(this);
+        }
+
+        // ─── 自己ベスト（ローカルPB）の取得 ─────────────────────────────────────────
+
+        // ローカルのPlayerDataから、この譜面の自己ベストスコアを読み、最大スコアで割って精度(0〜1)を求める。
+        // 画面の「PB」表示と同じローカル記録を使うのでネットワーク不要。未プレイ/記録なしは0のまま。
+        // 注意: highScore は修飾子込みの実スコアなので、スコア修飾子(NF/Faster等)を付けた記録は精度がずれる。
+        private void ComputeSelfBestAccuracy()
+        {
+            try
+            {
+                var stats = _playerDataModel.playerData.TryGetPlayerLevelStatsData(_sceneSetupData.beatmapKey);
+                if (stats == null || !stats.validScore || stats.highScore <= 0) return;
+
+                int maxScore = ScoreModel.ComputeMaxMultipliedScoreForBeatmap(_sceneSetupData.transformedBeatmapData);
+                if (maxScore <= 0) return;
+
+                double acc = (double)stats.highScore / maxScore;
+                _selfBestAccuracy = acc < 0 ? 0 : (acc > 1 ? 1 : acc); // 念のため[0,1]に丸める
+                Plugin.Log.Info($"[LRCounter] SelfBest (local PB): {stats.highScore}/{maxScore} = {_selfBestAccuracy * 100:F2}%");
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.Warn($"[LRCounter] ComputeSelfBestAccuracy failed: {ex.Message}");
+            }
         }
 
         // ─── Star評価の取得 ────────────────────────────────────────────────────────
@@ -237,8 +272,7 @@ namespace LRCounter.Controllers
                         s.hash == currentHash && s.difficulty == currentDiff && s.gameMode == currentMode);
                     if (idx >= 0)
                     {
-                        // 既存スコアのPPを自己ベストとして保持（青白グローの判定に使う）。新スコアはこの枠を置き換える。
-                        SelfBestPP = rankedScores[idx].pp;
+                        // 今プレイ中の曲の既存スコアはThreshold計算では新スコアに置き換わるので候補から外す。
                         Plugin.Log.Info($"[LRCounter] Existing score for this map (pp={rankedScores[idx].pp:F2}) will be replaced");
                         others.RemoveAt(idx);
                     }
