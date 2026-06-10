@@ -23,12 +23,12 @@ namespace LRCounter.Configuration
 
         // ─── 共有の奥行き ───────────────────────────────────────────────
         // Canvas全体をカメラ側へ寄せて前面化する距離(ワールド単位/メートル)。大きいほど手前。
-        public virtual float DepthZ { get; set; } = 0.80f;
+        public virtual float DepthZ { get; set; } = -0.30f;
 
         // ─── 精度バー(外側)の配置（いずれもCanvas高さ/幅の比 0〜1） ───────
         public virtual bool ShowAccBar { get; set; } = true;      // 表示ON/OFF
         public virtual float AccBarSpacing { get; set; } = 0.34f;  // 中央(0.5)を起点とした左右バーの間隔
-        public virtual float AccBarY { get; set; } = 0.35f;       // バー下端のY
+        public virtual float AccBarY { get; set; } = 0.33f;       // バー下端のY
         public virtual float AccBarHeight { get; set; } = 0.50f;  // バーの高さ
         public virtual float AccBarWidth { get; set; } = 0.01f;   // バーの幅
         public virtual int AccBarMin { get; set; } = 90;          // バー下端にマッピングする精度(%)。選択肢: 90/80/50/0（動的レンジOFF時のみ有効）
