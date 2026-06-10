@@ -55,13 +55,6 @@ namespace LRCounter.Controllers
             set { _config.ShowAccBar = value; _config.Changed(); }
         }
 
-        [UIValue("show-score-bar")]
-        public bool ShowScoreBar
-        {
-            get => _config.ShowScoreBar;
-            set { _config.ShowScoreBar = value; _config.Changed(); }
-        }
-
         // ———— Shared depth ————
         [UIValue("depth-z")]
         public float DepthZ
@@ -110,46 +103,6 @@ namespace LRCounter.Controllers
             set { _config.AccBarMin = value; _config.Changed(); }
         }
 
-        // ———— Score bar layout ————
-        [UIValue("score-spacing")]
-        public float ScoreBarSpacing
-        {
-            get => _config.ScoreBarSpacing;
-            set { _config.ScoreBarSpacing = value; _config.Changed(); }
-        }
-
-        [UIValue("score-y")]
-        public float ScoreBarY
-        {
-            get => _config.ScoreBarY;
-            set { _config.ScoreBarY = value; _config.Changed(); }
-        }
-
-        [UIValue("score-height")]
-        public float ScoreBarHeight
-        {
-            get => _config.ScoreBarHeight;
-            set { _config.ScoreBarHeight = value; _config.Changed(); }
-        }
-
-        [UIValue("score-width")]
-        public float ScoreBarWidth
-        {
-            get => _config.ScoreBarWidth;
-            set { _config.ScoreBarWidth = value; _config.Changed(); }
-        }
-
-        // バー下端にマッピングする平均点。左右の矢印で 110/105 を切り替える。
-        [UIValue("score-min-options")]
-        public List<object> ScoreBarMinOptions { get; } = new List<object> { 105, 110 };
-
-        [UIValue("score-min")]
-        public int ScoreBarMin
-        {
-            get => _config.ScoreBarMin;
-            set { _config.ScoreBarMin = value; _config.Changed(); }
-        }
-
         // ———— Total label (combined %/PP) ————
         [UIValue("total-x")]
         public float TotalLabelX
@@ -172,7 +125,7 @@ namespace LRCounter.Controllers
             set { _config.TotalLabelSize = value; _config.Changed(); }
         }
 
-        // ———— 11段階バー色（精度バー・点数バー共通） ————
+        // ———— 11段階の精度バー色 ————
         // hex文字列で保持する設定値を Color として出し入れする（color-setting 用）。
         [UIValue("color-red")]
         public Color Color00Red
@@ -264,18 +217,12 @@ namespace LRCounter.Controllers
             _config.TextSize = d.TextSize;
             _config.ShowTotalLabel = d.ShowTotalLabel;
             _config.ShowAccBar = d.ShowAccBar;
-            _config.ShowScoreBar = d.ShowScoreBar;
             _config.DepthZ = d.DepthZ;
             _config.AccBarSpacing = d.AccBarSpacing;
             _config.AccBarY = d.AccBarY;
             _config.AccBarHeight = d.AccBarHeight;
             _config.AccBarWidth = d.AccBarWidth;
             _config.AccBarMin = d.AccBarMin;
-            _config.ScoreBarSpacing = d.ScoreBarSpacing;
-            _config.ScoreBarY = d.ScoreBarY;
-            _config.ScoreBarHeight = d.ScoreBarHeight;
-            _config.ScoreBarWidth = d.ScoreBarWidth;
-            _config.ScoreBarMin = d.ScoreBarMin;
             _config.TotalLabelX = d.TotalLabelX;
             _config.TotalLabelY = d.TotalLabelY;
             _config.TotalLabelSize = d.TotalLabelSize;
@@ -296,18 +243,12 @@ namespace LRCounter.Controllers
             NotifyPropertyChanged(nameof(TextSize));
             NotifyPropertyChanged(nameof(ShowTotalLabel));
             NotifyPropertyChanged(nameof(ShowAccBar));
-            NotifyPropertyChanged(nameof(ShowScoreBar));
             NotifyPropertyChanged(nameof(DepthZ));
             NotifyPropertyChanged(nameof(AccBarSpacing));
             NotifyPropertyChanged(nameof(AccBarY));
             NotifyPropertyChanged(nameof(AccBarHeight));
             NotifyPropertyChanged(nameof(AccBarWidth));
             NotifyPropertyChanged(nameof(AccBarMin));
-            NotifyPropertyChanged(nameof(ScoreBarSpacing));
-            NotifyPropertyChanged(nameof(ScoreBarY));
-            NotifyPropertyChanged(nameof(ScoreBarHeight));
-            NotifyPropertyChanged(nameof(ScoreBarWidth));
-            NotifyPropertyChanged(nameof(ScoreBarMin));
             NotifyPropertyChanged(nameof(TotalLabelX));
             NotifyPropertyChanged(nameof(TotalLabelY));
             NotifyPropertyChanged(nameof(TotalLabelSize));

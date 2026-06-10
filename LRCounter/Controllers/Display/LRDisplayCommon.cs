@@ -32,13 +32,11 @@ namespace LRCounter.Controllers.Display
         public static readonly Color GridLineColor = new Color(1f, 1f, 1f, 0.45f); // 通常の目盛り線（半透明白）
         public const float GridLineHalfHeight = 0.1f; // 目盛り線の半分の高さ（全線共通）
 
-        // ─── 11段階バー色（精度バー・点数バー共通） ───────────────────────────────
+        // ─── 11段階の精度バー色 ───────────────────────────────
         // 各バンドの下端境界（その値以上でそのバンド）。最後のグレー(満点)は perfect 値でのみ適用。
-        // index 0..9 が設定の色 00〜09 に対応。10(グレー)は満点(100% / 115)のときだけ。
+        // index 0..9 が設定の色 00〜09 に対応。10(グレー)は満点(100%)のときだけ。
         private static readonly double[] AccLowerBounds = { 0, 50, 70, 80, 90, 95, 96, 97, 98, 99 };
-        private static readonly double[] ScoreLowerBounds = { 105, 106, 107, 108, 109, 110, 111, 112, 113, 114 };
         private const double AccPerfect = 100.0;
-        private const double ScorePerfect = 115.0;
 
         // バンド下端での淡さ（白へ寄せる割合）。上端＝原色、下端＝この割合だけ白寄り。
         private const float BandPaleAmount = 0.5f;
@@ -46,10 +44,6 @@ namespace LRCounter.Controllers.Display
         // 精度(%)から11段階の色を求める（100%は満点時のみグレー）
         public static Color AccuracyBarColor(double accPercent)
             => EvalElevenBands(AccLowerBounds, AccPerfect, GetBandColors(), accPercent);
-
-        // 平均点数から11段階の色を求める（115は満点時のみグレー）
-        public static Color ScoreBarColor(double score)
-            => EvalElevenBands(ScoreLowerBounds, ScorePerfect, GetBandColors(), score);
 
         // 設定から11色（index0=最下位…index10=満点色）を取得する
         public static Color[] GetBandColors()
