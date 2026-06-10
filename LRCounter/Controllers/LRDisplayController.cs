@@ -8,7 +8,7 @@ using Zenject;
 
 namespace LRCounter.Controllers
 {
-    // ゲーム中に各表示要素（精度バー/平均点数バー/合算ラベル/デバッグラベル）を
+    // ゲーム中に各表示要素（精度バー/合算ラベル/デバッグラベル）を
     // ワールドスペースCanvasにまとめて表示するコントローラー。
     // 各要素の実体は Display 名前空間のコンポーネントに分離し、ここはそれらへ移譲する。
     public class LRDisplayController : IInitializable, IDisposable
@@ -49,7 +49,6 @@ namespace LRCounter.Controllers
             // 各表示コンポーネントを生成して共通インターフェースのリストに登録（移譲先）。
             // 要素を追加したいときはここに add するだけでよい。
             _components.Add(new AccuracyBars(_config, _trackerService, leftColor, rightColor));
-            _components.Add(new ScoreBars(_config, _trackerService, leftColor, rightColor));
             _components.Add(new TotalLabel(_config, _trackerService));
             if (!_config.HideDebugLabel)
                 _components.Add(new DebugLabel(_trackerService));

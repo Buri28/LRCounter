@@ -34,27 +34,19 @@ namespace LRCounter.Configuration
         public virtual int AccBarMin { get; set; } = 90;          // バー下端にマッピングする精度(%)。選択肢: 90/80/50/0（動的レンジOFF時のみ有効）
         public virtual bool AccBarDynamic { get; set; } = true;   // 動的レンジ: 10%幅の窓を精度に追従して上下スライドする（true=ON）
 
-        // ─── 平均点数バー(内側)の配置（いずれもCanvas比 0〜1） ──────────────
-        public virtual bool ShowScoreBar { get; set; } = false;    // 表示ON/OFF
-        public virtual float ScoreBarSpacing { get; set; } = 0.30f; // 中央(0.5)を起点とした左右バーの間隔
-        public virtual float ScoreBarY { get; set; } = 0.45f;
-        public virtual float ScoreBarHeight { get; set; } = 0.35f;
-        public virtual float ScoreBarWidth { get; set; } = 0.01f;
-        public virtual int ScoreBarMin { get; set; } = 110;       // バー下端にマッピングする平均点。選択肢: 110/105
-
         // ─── 合算ラベル（左右合計の精度・PPを中央上部に表示） ───────────────
         public virtual bool ShowTotalLabel { get; set; } = true; // 表示ON/OFF
         public virtual float TotalLabelX { get; set; } = 0.5f;   // 中心X（Canvas幅比）
         public virtual float TotalLabelY { get; set; } = 0.90f;  // 下端Y（Canvas高さ比）大きいほど上
         public virtual float TotalLabelSize { get; set; } = 4.0f;  // フォントサイズ
 
-        // ─── 11段階のバー色（精度バー・点数バー共通） ───────────────────────────
+        // ─── 11段階の精度バー色 ───────────────────────────
         // 各バンドの「原色（上端側）」を hex(#RRGGBB) で保持。下端側は自動で白寄りに淡くなる。
-        // index 昇順＝値の昇順。最後のグレーは満点(100% / 115)時のみ適用。
-        //   00 赤(0〜49% / 105)      01 橙(50〜69% / 106)   02 黄(70〜79% / 107)
-        //   03 緑(80〜89% / 108)      04 青(90〜94% / 109)   05 マゼンタ(95% / 110)
-        //   06 シアン(96% / 111)      07 水色(97% / 112)     08 肌色(98% / 113)
-        //   09 紫(99% / 114)      10 グレー(100% / 115・満点のみ)
+        // index 昇順＝精度の昇順。最後のグレーは満点(100%)時のみ適用。
+        //   00 赤(0〜49%)      01 橙(50〜69%)   02 黄(70〜79%)
+        //   03 緑(80〜89%)      04 青(90〜94%)   05 マゼンタ(95%)
+        //   06 シアン(96%)      07 水色(97%)     08 肌色(98%)
+        //   09 紫(99%)      10 グレー(100%・満点のみ)
         public virtual string Color00Red { get; set; } = "#ff0000";
         public virtual string Color01Orange { get; set; } = "#ff7f00";
         public virtual string Color02Yellow { get; set; } = "#ffff00";

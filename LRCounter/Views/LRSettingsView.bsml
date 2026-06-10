@@ -26,14 +26,6 @@
                     bind-value='true'
                     hover-hint='Accuracy (%) mapped to the bottom of the accuracy bar. Lower = wider range shown.' />
 
-    <!-- 平均点数バー下端にマッピングする平均点。左右矢印で 110/105 を切り替え -->
-    <list-setting text='Score Min (Bottom)'
-                    value='score-min'
-                    options='score-min-options'
-                    apply-on-change='true'
-                    bind-value='true'
-                    hover-hint='Average cut score mapped to the bottom of the score bar. Lower = wider range shown.' />
-
     <!-- ───────── Common ───────── -->
     <horizontal spacing='1' pad='0' pad-top='1'>
       <text text='[Common]' color='#00FFFF' />
@@ -135,66 +127,22 @@
                     min='0.01' max='0.1' increment='0.01'
                     hover-hint='Bar width (thickness).' />
 
-    <!-- ───────── Score Bar (inner) ───────── -->
-    <horizontal spacing='1' pad='0' pad-top='1'>
-      <text text='[Score Bar]' color='#FF99DD' />
-    </horizontal>
-
-    <!-- 内側の平均点数バー(グッドカット平均)の表示ON/OFF -->
-    <toggle-setting text='Enable'
-                    value='show-score-bar'
-                    apply-on-change='true'
-                    bind-value='true'
-                    hover-hint='Show/hide the score (average cut) bars.' />
-
-    <!-- 中央(0.5)を起点とした左右点数バーの間隔。大きいほど左右に広がる -->
-    <increment-setting text='Spacing'
-                    value='score-spacing'
-                    apply-on-change='true'
-                    bind-value='true'
-                    min='0' max='1' increment='0.01'
-                    hover-hint='Gap between the left/right score bars, centered on the screen. Larger = farther apart.' />
-
-    <!-- 点数バー下端の垂直位置(大きいほど上) -->
-    <increment-setting text='Y (Bottom)'
-                    value='score-y'
-                    apply-on-change='true'
-                    bind-value='true'
-                    min='-0.5' max='1.5' increment='0.01'
-                    hover-hint='Vertical position of the bar bottom.' />
-
-    <!-- 点数バーの高さ -->
-    <increment-setting text='Height'
-                    value='score-height'
-                    apply-on-change='true'
-                    bind-value='true'
-                    min='0.05' max='1.5' increment='0.01'
-                    hover-hint='Bar height.' />
-
-    <!-- 点数バーの幅(太さ) -->
-    <increment-setting text='Width'
-                    value='score-width'
-                    apply-on-change='true'
-                    bind-value='true'
-                    min='0.01' max='0.1' increment='0.01'
-                    hover-hint='Bar width (thickness).' />
-
-    <!-- ───────── Colors (精度バー・点数バー共通の11段階。上端=原色/下端=淡い) ───────── -->
+    <!-- ───────── Colors (精度バーの11段階。上端=原色/下端=淡い) ───────── -->
     <horizontal spacing='1' pad='0' pad-top='1'>
       <text text='[Colors]' color='#FF80BF' />
     </horizontal>
 
-    <color-setting text='100% / 115 (Perfect)' value='color-grey'      apply-on-change='true' bind-value='true' hover-hint='Color shown only on a perfect 100% / 115.' />
-    <color-setting text='99% / 114'             value='color-purple'    apply-on-change='true' bind-value='true' />
-    <color-setting text='98% / 113'             value='color-skin'      apply-on-change='true' bind-value='true' />
-    <color-setting text='97% / 112'             value='color-lightblue' apply-on-change='true' bind-value='true' />
-    <color-setting text='96% / 111'             value='color-cyan'      apply-on-change='true' bind-value='true' />
-    <color-setting text='95% / 110'             value='color-magenta'   apply-on-change='true' bind-value='true' />
-    <color-setting text='90-94% / 109'          value='color-blue'      apply-on-change='true' bind-value='true' />
-    <color-setting text='80-89% / 108'          value='color-green'     apply-on-change='true' bind-value='true' />
-    <color-setting text='70-79% / 107'          value='color-yellow'    apply-on-change='true' bind-value='true' />
-    <color-setting text='50-69% / 106'          value='color-orange'    apply-on-change='true' bind-value='true' />
-    <color-setting text='0-49% / 105'           value='color-red'       apply-on-change='true' bind-value='true' />
+    <color-setting text='100% (Perfect)' value='color-grey'      apply-on-change='true' bind-value='true' hover-hint='Color shown only on a perfect 100%.' />
+    <color-setting text='99%'             value='color-purple'    apply-on-change='true' bind-value='true' />
+    <color-setting text='98%'             value='color-skin'      apply-on-change='true' bind-value='true' />
+    <color-setting text='97%'             value='color-lightblue' apply-on-change='true' bind-value='true' />
+    <color-setting text='96%'             value='color-cyan'      apply-on-change='true' bind-value='true' />
+    <color-setting text='95%'             value='color-magenta'   apply-on-change='true' bind-value='true' />
+    <color-setting text='90-94%'          value='color-blue'      apply-on-change='true' bind-value='true' />
+    <color-setting text='80-89%'          value='color-green'     apply-on-change='true' bind-value='true' />
+    <color-setting text='70-79%'          value='color-yellow'    apply-on-change='true' bind-value='true' />
+    <color-setting text='50-69%'          value='color-orange'    apply-on-change='true' bind-value='true' />
+    <color-setting text='0-49%'           value='color-red'       apply-on-change='true' bind-value='true' />
 
     <!-- 全設定を既定値に戻す -->
     <button text='Reset All Settings'
