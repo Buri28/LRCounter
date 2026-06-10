@@ -18,6 +18,7 @@ namespace LRCounter.Controllers.Display
         // 左バー
         private Image? _leftFill;
         private Image? _leftFlashOverlay;
+        private Image[]? _leftBorder;   // 閾値の枠（左/右/上/下の4帯）
         private TMP_Text? _leftLabel;
         private TMP_Text? _leftPPLabel;
         private Image? _leftTargetLine;
@@ -26,6 +27,7 @@ namespace LRCounter.Controllers.Display
         // 右バー
         private Image? _rightFill;
         private Image? _rightFlashOverlay;
+        private Image[]? _rightBorder;  // 閾値の枠（左/右/上/下の4帯）
         private TMP_Text? _rightLabel;
         private TMP_Text? _rightPPLabel;
         private Image? _rightTargetLine;
@@ -35,6 +37,13 @@ namespace LRCounter.Controllers.Display
         private float _leftFlashEnd = -1f;
         private float _rightFlashEnd = -1f;
         private const float FlashDuration = 0.4f;
+
+        // ─── 閾値の枠（バー外周を縁取る。全面塗りだと塗り色とブレンドして判別しにくいため枠方式） ───
+        // 合算TotalPPで判定し左右同時に点灯する。白(PP取得)を優先、青(スコア更新)が下位。
+        // バーの外側に出すので塗り・赤フラッシュ（バー内側）とは重ならず、両立する。
+        private static readonly Color BorderBlue  = new Color(0f, 0.8f, 1f, 1f);   // スコア更新：自己ベスト精度超え（シアン寄り）
+        private static readonly Color BorderWhite = new Color(1f, 1f, 1f, 1f);      // PP取得：白いライン超え
+        private const float BorderThickness = 0.4f;                                 // 枠の太さ（Canvas論理単位）
 
         // 精度バーが表示する精度の範囲(%)。下端=low、上端=low+幅 にマッピングする。
         private const double AccDisplayMax = 100.0;
@@ -92,6 +101,10 @@ namespace LRCounter.Controllers.Display
             // 目標ライン（必要精度）を各バー（bg）上に作る。位置は Update で毎回更新。
             _leftTargetLine = CreateTargetLine((RectTransform)_leftFill!.transform.parent, layer);
             _rightTargetLine = CreateTargetLine((RectTransform)_rightFill!.transform.parent, layer);
+
+            // 閾値の枠（バー外周）。塗り・フラッシュより後に作り、バーの外側に配置する。
+            _leftBorder = CreateBorder(canvasRT, layer, isLeft: true);
+            _rightBorder = CreateBorder(canvasRT, layer, isLeft: false);
         }
 
         public void Update()
@@ -155,6 +168,11 @@ namespace LRCounter.Controllers.Display
             _rightPPLabel!.color = ppColor;
 
             UpdateTargetLine();
+
+            // 閾値の枠：合算TotalPPで判定し、左右バーを同時に縁取る（白=PP取得を優先 / 青=スコア更新）。
+            Color borderColor = BorderColorForThresholds();
+            SetBorder(_leftBorder, borderColor);
+            SetBorder(_rightBorder, borderColor);
         }
 
         public void TickFlash()
@@ -171,6 +189,8 @@ namespace LRCounter.Controllers.Display
             LRDisplayCommon.SetActive(_rightFill?.transform.parent, visible);
             LRDisplayCommon.SetActive(_leftFlashOverlay?.transform, visible);
             LRDisplayCommon.SetActive(_rightFlashOverlay?.transform, visible);
+            SetBorderActive(_leftBorder, visible);
+            SetBorderActive(_rightBorder, visible);
             LRDisplayCommon.SetActive(_leftLabel?.transform, visible);
             LRDisplayCommon.SetActive(_rightLabel?.transform, visible);
             LRDisplayCommon.SetActive(_leftPPLabel?.transform, visible);
@@ -295,6 +315,58 @@ namespace LRCounter.Controllers.Display
             return (fill, flashImg, label, ppLabel);
         }
 
+        // ─── 閾値の枠（バー外周の4帯）を生成する ─────────────────────────────────────
+        // バーの外側に左/右/上/下の細い帯を置いて枠にする。初期は透明（消灯）。
+        private Image[] CreateBorder(RectTransform canvasRT, int layer, bool isLeft)
+        {
+            string side = isLeft ? "L" : "R";
+            float centerX = isLeft
+                ? 0.5f - _config.AccBarSpacing * 0.5f
+                : 0.5f + _config.AccBarSpacing * 0.5f;
+            float halfW = _config.AccBarWidth * 0.5f;
+            float xMin = centerX - halfW;
+            float xMax = centerX + halfW;
+            float yMin = _config.AccBarY;
+            float yMax = _config.AccBarY + _config.AccBarHeight;
+            const float t = BorderThickness;
+
+            // anchorは「バー矩形の縁」に貼り、offsetでバーの外側へ t ぶん張り出させる（offsetはCanvas論理単位）。
+            // 角を埋めるため、上下帯は左右へも t ぶん広げる。
+            return new[]
+            {
+                // 左帯（バー左辺の外側、上下の角を含む）
+                CreateBorderStrip(canvasRT, layer, $"{side}_L",
+                    new Vector2(xMin, yMin), new Vector2(xMin, yMax), new Vector2(-t, -t), new Vector2(0f, t)),
+                // 右帯
+                CreateBorderStrip(canvasRT, layer, $"{side}_R",
+                    new Vector2(xMax, yMin), new Vector2(xMax, yMax), new Vector2(0f, -t), new Vector2(t, t)),
+                // 上帯
+                CreateBorderStrip(canvasRT, layer, $"{side}_T",
+                    new Vector2(xMin, yMax), new Vector2(xMax, yMax), new Vector2(-t, 0f), new Vector2(t, t)),
+                // 下帯
+                CreateBorderStrip(canvasRT, layer, $"{side}_B",
+                    new Vector2(xMin, yMin), new Vector2(xMax, yMin), new Vector2(-t, -t), new Vector2(t, 0f)),
+            };
+        }
+
+        private static Image CreateBorderStrip(RectTransform canvasRT, int layer, string name,
+            Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax)
+        {
+            var go = new GameObject($"LRBorder_{name}");
+            go.layer = layer;
+            var rt = go.AddComponent<RectTransform>();
+            rt.SetParent(canvasRT, false);
+            rt.anchorMin = anchorMin;
+            rt.anchorMax = anchorMax;
+            rt.offsetMin = offsetMin;
+            rt.offsetMax = offsetMax;
+            var img = go.AddComponent<Image>();
+            img.sprite = LRDisplayCommon.CreateWhiteSprite();
+            img.color = Color.clear; // 初期は消灯
+            LRDisplayCommon.ApplyNoGlow(img);
+            return img;
+        }
+
         // 目標ライン(必要精度)を1本生成する。位置は Update で更新。初期は非表示。
         private Image CreateTargetLine(RectTransform barRT, int layer)
         {
@@ -408,6 +480,37 @@ namespace LRCounter.Controllers.Display
                 case 99: return LRDisplayCommon.ColRed;
                 default: return LRDisplayCommon.GridLineColor;
             }
+        }
+
+        // 合算TotalPPと各閾値から枠の色を決める。点灯なしは透明（Color.clear）。
+        // 白(PP取得=白いライン超え)が最優先。次点で青(スコア更新=自己ベスト精度超え)。
+        private Color BorderColorForThresholds()
+        {
+            // アンランクはPP概念が無いので点灯しない
+            if (_tracker.StarRating <= 0) return Color.clear;
+
+            double totalPP = _tracker.TotalPP;
+            // PP取得：白いライン(ThresholdPP)を超えたか。Threshold未取得(0)のうちは判定しない。
+            if (_tracker.ThresholdPP > 0 && totalPP >= _tracker.ThresholdPP) return BorderWhite;
+            // スコア更新：自己ベストPPを超えたか。記録なし(SelfBestPP=0)なら、得点した時点で更新扱い。
+            if (totalPP > 0 && totalPP >= _tracker.SelfBestPP) return BorderBlue;
+            return Color.clear;
+        }
+
+        // 枠（4帯）の色をまとめて設定する（透明＝消灯）。フェードは無く、状態が変わるまで点灯し続ける。
+        private static void SetBorder(Image[]? strips, Color color)
+        {
+            if (strips == null) return;
+            foreach (var s in strips)
+                if (s != null) s.color = color;
+        }
+
+        // 枠（4帯）の表示ON/OFFをまとめて切り替える。
+        private static void SetBorderActive(Image[]? strips, bool visible)
+        {
+            if (strips == null) return;
+            foreach (var s in strips)
+                LRDisplayCommon.SetActive(s?.transform, visible);
         }
 
         // フラッシュの残り時間に応じてアルファを計算し、時間切れなら透明にする

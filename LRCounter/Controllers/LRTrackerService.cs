@@ -40,6 +40,9 @@ namespace LRCounter.Controllers
         public double TotalPP { get; private set; } = 0; // 現在のスコアから推定される合計PP
         public double ThresholdPP { get; private set; } = 0; // ランクアップに必要な最低PP
         public double PlayerTotalPP { get; private set; } = 0; // ScoreSaberに登録されているプレイヤーの現在合計PP
+        // この譜面の既存スコア（自己ベスト）のPP。記録が無い/取得できなかった場合は0。
+        // 合算TotalPPがこれを超えた＝自己ベストの精度を更新したとみなす（PPは精度の単調関数）。
+        public double SelfBestPP { get; private set; } = 0;
 
         // Threshold計算で取得するランクスコアのページ数（1ページ100件・並列取得）。101位以下の微小寄与まで
         // 反映するため深めに取る。0.1pp判定なら必要な深さは概ね rank≈250 までなので3ページ(300件)で十分。
@@ -234,6 +237,8 @@ namespace LRCounter.Controllers
                         s.hash == currentHash && s.difficulty == currentDiff && s.gameMode == currentMode);
                     if (idx >= 0)
                     {
+                        // 既存スコアのPPを自己ベストとして保持（青白グローの判定に使う）。新スコアはこの枠を置き換える。
+                        SelfBestPP = rankedScores[idx].pp;
                         Plugin.Log.Info($"[LRCounter] Existing score for this map (pp={rankedScores[idx].pp:F2}) will be replaced");
                         others.RemoveAt(idx);
                     }
