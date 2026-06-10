@@ -51,17 +51,17 @@ namespace LRCounter.Controllers.Display
             var c = PluginConfig.Instance;
             return new[]
             {
-                ParseHex(c.Color00Red),
-                ParseHex(c.Color01Orange),
-                ParseHex(c.Color02Yellow),
-                ParseHex(c.Color03Green),
-                ParseHex(c.Color04Blue),
-                ParseHex(c.Color05Magenta),
-                ParseHex(c.Color06Cyan),
-                ParseHex(c.Color07LightBlue),
-                ParseHex(c.Color08Skin),
-                ParseHex(c.Color09Purple),
-                ParseHex(c.Color10Grey),
+                ParseHex(c.Color00),
+                ParseHex(c.Color01),
+                ParseHex(c.Color02),
+                ParseHex(c.Color03),
+                ParseHex(c.Color04),
+                ParseHex(c.Color05),
+                ParseHex(c.Color06),
+                ParseHex(c.Color07),
+                ParseHex(c.Color08),
+                ParseHex(c.Color09),
+                ParseHex(c.Color10),
             };
         }
 
