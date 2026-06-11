@@ -6,7 +6,7 @@ namespace LRCounter.Models
     public static class PPCalculator
     {
         // ScoreSaberのPP曲線テーブル（精度→PP倍率のマッピング）
-        // pp = ppMultiplier(精度) × star × 42.11
+        // pp = ppMultiplier(精度) × star × 42.114296
         // ScoreSaber 現行の "Automatically Generated Curve V3"（実データから生成された公式カーブ）の
         // 37 点をそのまま採用。隣接 2 点の線形補間（GetPPMultiplier）で評価する。これは ScoreSaber 側
         // および各コミュニティ計算機（Shurdoof の PP calculator 等）と同一の方式。
@@ -53,10 +53,10 @@ namespace LRCounter.Models
         };
 
         // ScoreSaberのstar倍率定数（star評価1あたりのPP基準値）
-        private const double StarMultiplier = 42.11;
+        private const double StarMultiplier = 42.114296;
 
         // 精度（0.0〜1.0）とStar評価からPPを計算する
-        // 計算式: PP = PP倍率 × Star評価 × 42.11
+        // 計算式: PP = PP倍率 × Star評価 × 42.114296
         public static double CalculatePP(double accuracy, double starRating)
         {
             if (starRating <= 0) return 0; // アンランク譜面

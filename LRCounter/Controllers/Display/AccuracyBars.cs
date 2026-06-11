@@ -41,8 +41,7 @@ namespace LRCounter.Controllers.Display
         // ─── 閾値の枠（バー外周を縁取る。全面塗りだと塗り色とブレンドして判別しにくいため枠方式） ───
         // 合算TotalPPで判定し左右同時に点灯する。白(PP取得)を優先、青(スコア更新)が下位。
         // バーの外側に出すので塗り・赤フラッシュ（バー内側）とは重ならず、両立する。
-        private static readonly Color BorderBlue  = new Color(0f, 0.8f, 1f, 1f);   // スコア更新：自己ベスト精度超え（シアン寄り）
-        private static readonly Color BorderWhite = new Color(1f, 1f, 1f, 1f);      // PP取得：白いライン超え
+        // 枠の色は設定値（BorderColorScoreUpdate / BorderColorPP）から都度読む。
         private const float BorderThickness = 0.4f;                                 // 枠の太さ（Canvas論理単位）
 
         // 精度バーが表示する精度の範囲(%)。下端=low、上端=low+幅 にマッピングする。
@@ -491,9 +490,11 @@ namespace LRCounter.Controllers.Display
 
             double totalPP = _tracker.TotalPP;
             // PP取得：白いライン(ThresholdPP)を超えたか。Threshold未取得(0)のうちは判定しない。
-            if (_tracker.ThresholdPP > 0 && totalPP >= _tracker.ThresholdPP) return BorderWhite;
+            if (_tracker.ThresholdPP > 0 && totalPP >= _tracker.ThresholdPP)
+                return LRDisplayCommon.ParseHex(_config.BorderColorPP);
             // スコア更新：自己ベストPPを超えたか。自己ベスト未取得(SelfBestPP=0)のときは判定しない（誤点灯防止）。
-            if (_tracker.SelfBestPP > 0 && totalPP >= _tracker.SelfBestPP) return BorderBlue;
+            if (_tracker.SelfBestPP > 0 && totalPP >= _tracker.SelfBestPP)
+                return LRDisplayCommon.ParseHex(_config.BorderColorScoreUpdate);
             return Color.clear;
         }
 

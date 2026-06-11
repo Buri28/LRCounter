@@ -204,6 +204,21 @@ namespace LRCounter.Controllers
             set { _config.Color10 = LRDisplayCommon.ToHex(value); _config.Changed(); }
         }
 
+        // ———— 閾値の枠（ボーダー）の色 ————
+        [UIValue("border-color-score-update")]
+        public Color BorderColorScoreUpdate
+        {
+            get => LRDisplayCommon.ParseHex(_config.BorderColorScoreUpdate);
+            set { _config.BorderColorScoreUpdate = LRDisplayCommon.ToHex(value); _config.Changed(); }
+        }
+
+        [UIValue("border-color-pp")]
+        public Color BorderColorPP
+        {
+            get => LRDisplayCommon.ParseHex(_config.BorderColorPP);
+            set { _config.BorderColorPP = LRDisplayCommon.ToHex(value); _config.Changed(); }
+        }
+
         // ———— Reset Button ————
         [UIAction("reset-settings")]
         public void ResetSettings()
@@ -237,6 +252,8 @@ namespace LRCounter.Controllers
             _config.Color08 = d.Color08;
             _config.Color09 = d.Color09;
             _config.Color10 = d.Color10;
+            _config.BorderColorScoreUpdate = d.BorderColorScoreUpdate;
+            _config.BorderColorPP = d.BorderColorPP;
             _config.Changed();
 
             NotifyPropertyChanged(nameof(Enabled));
@@ -263,6 +280,8 @@ namespace LRCounter.Controllers
             NotifyPropertyChanged(nameof(Color08));
             NotifyPropertyChanged(nameof(Color09));
             NotifyPropertyChanged(nameof(Color10));
+            NotifyPropertyChanged(nameof(BorderColorScoreUpdate));
+            NotifyPropertyChanged(nameof(BorderColorPP));
             Plugin.Log.Info("Settings reset to defaults.");
         }
     }
