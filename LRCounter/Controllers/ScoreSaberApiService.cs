@@ -32,6 +32,20 @@ namespace LRCounter.Controllers
             Http.Timeout = TimeSpan.FromSeconds(10); // タイムアウト10秒
         }
 
+        // ─── v1フォールバック制御 ──────────────────────────────────────────────────
+
+        // v2 APIが失敗して v1 で成功したら、以降このセッションは v1 に直行する
+        // （落ちている v2 へのリクエスト＋タイムアウト10秒を毎回払わないため）。
+        // 両方失敗した場合はネットワーク全断の可能性があるのでフラグは立てず、次回も v2 から試す。
+        private bool _v2Unavailable = false;
+
+        private void NoteV2Unavailable()
+        {
+            if (_v2Unavailable) return;
+            _v2Unavailable = true;
+            Plugin.Log.Warn("[ScoreSaberApi] v2 API unavailable; switching to v1 API for this session.");
+        }
+
         // ─── プレイヤーID取得 ──────────────────────────────────────────────────────
 
         // ローカルプレイヤーのプラットフォームユーザーID（Steamなら SteamID64）を文字列で返す。
@@ -64,43 +78,98 @@ namespace LRCounter.Controllers
 
         // ─── プレイヤー情報取得 ────────────────────────────────────────────────────
 
-        // ScoreSaberに登録されているプレイヤーの現在合計PPを取得する
-        // エンドポイント(v2): /api/v2/players/{id}
-        public async Task<double> GetPlayerTotalPPAsync(string playerId)
+        // ScoreSaberに登録されているプレイヤーの現在合計PPを取得する。
+        // 取得失敗時は null を返す（呼び出し側でキャッシュせず再試行できるよう0と区別する）。
+        // v2が失敗したらv1へフォールバックする。
+        // エンドポイント(v2): /api/v2/players/{id}      … stats.totalPP
+        // エンドポイント(v1): /api/player/{id}/full     … playerInfo直下の "pp"
+        public async Task<double?> GetPlayerTotalPPAsync(string playerId)
+        {
+            if (!_v2Unavailable)
+            {
+                // v2では合計PPは stats.totalPP に入っている（v1のトップレベル "pp" から変更）
+                double? pp = await FetchNumberAsync(
+                    $"https://scoresaber.com/api/v2/players/{playerId}",
+                    @"""totalPP""\s*:\s*([\d.]+)", "totalPP");
+                if (pp != null) return pp;
+            }
+
+            // v1ではトップレベル（playerInfo直下）の "pp"。最初に一致する "pp": がそれ
+            double? v1pp = await FetchNumberAsync(
+                $"https://scoresaber.com/api/player/{playerId}/full",
+                @"""pp""\s*:\s*([\d.]+)", "pp");
+            if (v1pp != null) NoteV2Unavailable();
+            return v1pp;
+        }
+
+        // 指定URLのJSONから pattern に最初に一致した数値を取り出す。失敗時は null。
+        private static async Task<double?> FetchNumberAsync(string url, string pattern, string fieldName)
         {
             try
             {
-                string url = $"https://scoresaber.com/api/v2/players/{playerId}";
                 Plugin.Log.Info($"[ScoreSaberApi] GET {url}");
                 string json = await Http.GetStringAsync(url);
 
-                // v2では合計PPは stats.totalPP に入っている（v1のトップレベル "pp" から変更）
-                var m = Regex.Match(json, @"""totalPP""\s*:\s*([\d.]+)");
+                var m = Regex.Match(json, pattern);
                 if (m.Success && double.TryParse(
                         m.Groups[1].Value, NumberStyles.Float,
-                        CultureInfo.InvariantCulture, out double pp))
-                    return pp;
+                        CultureInfo.InvariantCulture, out double value))
+                    return value;
+
+                Plugin.Log.Warn($"[ScoreSaberApi] '{fieldName}' field not found.");
             }
             catch (Exception ex)
             {
-                Plugin.Log.Warn($"[ScoreSaberApi] GetPlayerTotalPP failed: {ex.Message}");
+                Plugin.Log.Warn($"[ScoreSaberApi] GET {fieldName} failed: {ex.Message}");
             }
-            return 0;
+            return null;
         }
 
         // ─── 譜面Star評価取得 ──────────────────────────────────────────────────────
 
-        // 譜面ハッシュ・難易度・ゲームモードを指定してStar評価を取得する
-        // アンランク譜面や通信失敗の場合は0を返す
+        // 譜面ハッシュ・難易度・ゲームモードを指定してStar評価を取得する。
+        // アンランク（リーダーボード未登録=404）は0、通信失敗（レートリミット等）は null を返す。
+        // 呼び出し側（PlayerDataCache）が「0はキャッシュ・nullは再試行」と区別できるようにするため。
+        // v2が失敗したらv1へフォールバックする（404=アンランクは確定値なのでフォールバックしない）。
         // エンドポイント(v2): /api/v2/leaderboards/hash/{hash}/{mode}/{difficulty}
-        // （v1のクエリ指定からパス指定に変更。mode例="SoloStandard", difficulty=1/3/5/7/9）
-        public async Task<double> GetLeaderboardStarsAsync(string hash, int difficulty, string gameMode)
+        // エンドポイント(v1): /api/leaderboard/by-hash/{hash}/info?difficulty={n}&gameMode={mode}
+        public async Task<double?> GetLeaderboardStarsAsync(string hash, int difficulty, string gameMode)
+        {
+            if (!_v2Unavailable)
+            {
+                double? stars = await FetchStarsAsync(
+                    $"https://scoresaber.com/api/v2/leaderboards/hash/{hash}/{gameMode}/{difficulty}");
+                if (stars != null) return stars; // 0（アンランク404）も確定値として返す
+            }
+
+            double? v1Stars = await FetchStarsAsync(
+                $"https://scoresaber.com/api/leaderboard/by-hash/{hash}/info?difficulty={difficulty}&gameMode={gameMode}");
+            if (v1Stars != null) NoteV2Unavailable();
+            return v1Stars;
+        }
+
+        // 指定URLからStar評価を取得する。404（アンランク）は0、通信失敗・解析失敗は null。
+        private static async Task<double?> FetchStarsAsync(string url)
         {
             try
             {
-                string url = $"https://scoresaber.com/api/v2/leaderboards/hash/{hash}/{gameMode}/{difficulty}";
                 Plugin.Log.Info($"[ScoreSaberApi] GET {url}");
-                string json = await Http.GetStringAsync(url);
+                using var response = await Http.GetAsync(url);
+
+                // 404 = リーダーボード未登録（アンランク）。正常ケースなのでInfoレベルで記録して0を返す
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    Plugin.Log.Info("[ScoreSaberApi] Leaderboard not found (unranked).");
+                    return 0;
+                }
+                // レートリミット(429)やサーバーエラー等は失敗としてnullを返す（キャッシュさせない）
+                if (!response.IsSuccessStatusCode)
+                {
+                    Plugin.Log.Warn($"[ScoreSaberApi] Leaderboard API returned {(int)response.StatusCode}.");
+                    return null;
+                }
+
+                string json = await response.Content.ReadAsStringAsync();
 
                 // JSONから "stars": 数値 を抽出
                 var m = Regex.Match(json, @"""stars""\s*:\s*([\d.]+)");
@@ -111,67 +180,38 @@ namespace LRCounter.Controllers
 
                 Plugin.Log.Warn("[ScoreSaberApi] 'stars' field not found.");
             }
-            catch (HttpRequestException ex)
-            {
-                // 404などAPIエラーは通常のケース（アンランク等）なのでInfoレベルで記録
-                Plugin.Log.Info($"[ScoreSaberApi] Leaderboard API: {ex.Message}");
-            }
             catch (Exception ex)
             {
                 Plugin.Log.Warn($"[ScoreSaberApi] GetLeaderboardStars failed: {ex.Message}");
             }
-            return 0;
+            return null;
         }
 
         // ─── ランクスコア取得（ページング） ─────────────────────────────────────────
 
+        // ページ取得の間に挟むディレイ(ms)。同時バーストでレートリミットに当たるのを避ける。
+        // 取得は起動時（キャッシュロード時）の1回だけなので、多少遅くても問題ない。
+        private const int PageFetchDelayMs = 250;
+
         // プレイヤーのランクスコアを (PP値, 譜面ハッシュ) のリストとして取得する。
-        // 1ページ100件で maxPages 分を「並列」取得する（逐次より速い）。
+        // 1ページ100件で maxPages 分を「直列＋小ディレイ」で取得する（バースト保護）。
         // Top100だけだと101位以下の微小寄与を無視してしまうため、Threshold精緻化のため深めに取る。
-        // PP降順でソート済みのリストを返す。
+        // PP降順でソート済みのリストを返す。ページ単位でv2→v1フォールバックする。
         // エンドポイント(v2): /api/v2/players/{id}/scores?sort=top&limit=100&page=N
+        // エンドポイント(v1): /api/player/{id}/scores?sort=top&limit=100&page=N
         public async Task<List<(double pp, string hash, int difficulty, string gameMode)>> GetTopScoresAsync(string playerId, int maxPages)
         {
             var scores = new List<(double pp, string hash, int difficulty, string gameMode)>();
             try
             {
-                // 各ページを並列でリクエストして一括待ち合わせる。範囲外ページの404等は
-                // SafeGetStringAsync が "" を返すので、1ページの失敗で全体が落ちることはない。
-                var pageTasks = new List<Task<string>>();
                 for (int page = 1; page <= maxPages; page++)
                 {
-                    string url = $"https://scoresaber.com/api/v2/players/{playerId}/scores?sort=top&limit=100&page={page}";
-                    Plugin.Log.Info($"[ScoreSaberApi] GET {url}");
-                    pageTasks.Add(SafeGetStringAsync(url));
-                }
-                string[] jsons = await Task.WhenAll(pageTasks);
+                    if (page > 1) await Task.Delay(PageFetchDelayMs); // バースト回避
 
-                foreach (string json in jsons)
-                {
-                    // 1スコア = score{...pp...weight...} + leaderboard{ map{hash}, difficulty{difficulty,gameMode} }
-                    // という順で並ぶので、pp/hash/難易度/モードを同順で抽出してインデックスでペアにする。
-                    // （同じ譜面でも難易度・モードが違えば別リーダーボード＝別スコアなので全部で照合する）
-                    var ppMatches = Regex.Matches(json,
-                        @"""pp""\s*:\s*([\d.]+)\s*,\s*""weight""");
-                    // v2では譜面ハッシュは leaderboard.map.hash（v1の "songHash" から変更）
-                    var hashMatches = Regex.Matches(json,
-                        @"""hash""\s*:\s*""([A-Fa-f0-9]+)""",
-                        RegexOptions.IgnoreCase);
-                    // 難易度は difficulty オブジェクト内の整数 "difficulty":N（外側キーは "difficulty":{ なので一致しない）
-                    var diffMatches = Regex.Matches(json, @"""difficulty""\s*:\s*(\d+)");
-                    var modeMatches = Regex.Matches(json, @"""gameMode""\s*:\s*""([^""]+)""");
-
-                    // 4種の抽出数が揃う範囲でペアにする
-                    int count = Math.Min(Math.Min(ppMatches.Count, hashMatches.Count),
-                                         Math.Min(diffMatches.Count, modeMatches.Count));
-                    for (int i = 0; i < count; i++)
-                    {
-                        if (double.TryParse(ppMatches[i].Groups[1].Value,
-                                NumberStyles.Float, CultureInfo.InvariantCulture, out double pp)
-                            && int.TryParse(diffMatches[i].Groups[1].Value, out int diff))
-                            scores.Add((pp, hashMatches[i].Groups[1].Value.ToUpperInvariant(),
-                                        diff, modeMatches[i].Groups[1].Value));
-                    }
+                    int count = await FetchScoresPageAsync(playerId, page, scores);
+                    // 失敗(-1)はここで打ち切り。1ページ100件未満ならそれが最終ページなので
+                    // 以降のリクエストを省略する
+                    if (count < 100) break;
                 }
 
                 // PP降順でソート
@@ -183,6 +223,62 @@ namespace LRCounter.Controllers
                 Plugin.Log.Warn($"[ScoreSaberApi] GetTopScores failed: {ex.Message}");
             }
             return scores;
+        }
+
+        // ランクスコア1ページ分を取得して scores に追加し、ページ内の件数を返す（両APIとも失敗なら -1）。
+        // 範囲外ページの404等は SafeGetStringAsync が "" を返すので、1ページの失敗で全体が落ちることはない。
+        private async Task<int> FetchScoresPageAsync(
+            string playerId, int page, List<(double pp, string hash, int difficulty, string gameMode)> scores)
+        {
+            if (!_v2Unavailable)
+            {
+                string url = $"https://scoresaber.com/api/v2/players/{playerId}/scores?sort=top&limit=100&page={page}";
+                Plugin.Log.Info($"[ScoreSaberApi] GET {url}");
+                string json = await SafeGetStringAsync(url);
+                if (!string.IsNullOrEmpty(json))
+                {
+                    // v2では譜面ハッシュは leaderboard.map.hash（v1の "songHash" から変更）
+                    return ParseScoresPage(json, @"""hash""\s*:\s*""([A-Fa-f0-9]+)""", scores);
+                }
+            }
+
+            string v1Url = $"https://scoresaber.com/api/player/{playerId}/scores?sort=top&limit=100&page={page}";
+            Plugin.Log.Info($"[ScoreSaberApi] GET {v1Url}");
+            string v1Json = await SafeGetStringAsync(v1Url);
+            if (string.IsNullOrEmpty(v1Json)) return -1;
+
+            NoteV2Unavailable();
+            // v1では譜面ハッシュは leaderboard.songHash
+            return ParseScoresPage(v1Json, @"""songHash""\s*:\s*""([A-Fa-f0-9]+)""", scores);
+        }
+
+        // 1ページ分のJSONをパースして scores に追加し、ページ内のスコア件数を返す。
+        // 1スコア = score{...pp...weight...} + leaderboard{ ハッシュ, difficulty{difficulty,gameMode} }
+        // という順で並ぶので、pp/hash/難易度/モードを同順で抽出してインデックスでペアにする。
+        // （同じ譜面でも難易度・モードが違えば別リーダーボード＝別スコアなので全部で照合する）
+        private static int ParseScoresPage(
+            string json, string hashPattern, List<(double pp, string hash, int difficulty, string gameMode)> scores)
+        {
+            var ppMatches = Regex.Matches(json,
+                @"""pp""\s*:\s*([\d.]+)\s*,\s*""weight""");
+            // 譜面ハッシュのキー名はAPIバージョンで異なるので呼び出し側からパターンで渡す
+            var hashMatches = Regex.Matches(json, hashPattern, RegexOptions.IgnoreCase);
+            // 難易度は difficulty オブジェクト内の整数 "difficulty":N（外側キーは "difficulty":{ なので一致しない）
+            var diffMatches = Regex.Matches(json, @"""difficulty""\s*:\s*(\d+)");
+            var modeMatches = Regex.Matches(json, @"""gameMode""\s*:\s*""([^""]+)""");
+
+            // 4種の抽出数が揃う範囲でペアにする
+            int count = Math.Min(Math.Min(ppMatches.Count, hashMatches.Count),
+                                 Math.Min(diffMatches.Count, modeMatches.Count));
+            for (int i = 0; i < count; i++)
+            {
+                if (double.TryParse(ppMatches[i].Groups[1].Value,
+                        NumberStyles.Float, CultureInfo.InvariantCulture, out double pp)
+                    && int.TryParse(diffMatches[i].Groups[1].Value, out int diff))
+                    scores.Add((pp, hashMatches[i].Groups[1].Value.ToUpperInvariant(),
+                                diff, modeMatches[i].Groups[1].Value));
+            }
+            return count;
         }
 
         // GetStringAsync を例外で全体が落ちないようにラップする（範囲外ページの404等は ""）
