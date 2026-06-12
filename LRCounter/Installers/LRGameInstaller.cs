@@ -23,9 +23,7 @@ namespace LRCounter.Installers
             // 設定オブジェクトをシーンに提供
             Container.BindInstance(_config).AsSingle();
 
-            // ScoreSaber API サービス
-            Container.Bind<ScoreSaberApiService>()
-                     .AsSingle();
+            // ScoreSaber API サービスとキャッシュは App スコープ（LRAppInstaller）から解決される
 
             // PP追跡サービス
             Container.BindInterfacesAndSelfTo<LRTrackerService>()

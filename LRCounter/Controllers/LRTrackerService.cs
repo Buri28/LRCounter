@@ -15,7 +15,7 @@ namespace LRCounter.Controllers
         private readonly ScoreController _scoreController;           // ノーツ判定イベントの発生源
         private readonly GameplayCoreSceneSetupData _sceneSetupData; // 譜面情報（ハッシュ・難易度など）
         private readonly PluginConfig _config;
-        private readonly ScoreSaberApiService _apiService;           // ScoreSaber API呼び出し
+        private readonly PlayerDataCache _playerDataCache;           // ScoreSaberデータのセッションキャッシュ（App スコープ）
         private readonly GameEnergyCounter _energyCounter;           // ノーフェイルペナルティ検出用
         private bool _penaltyApplied = false;                        // ペナルティは1回だけ適用
 
@@ -48,9 +48,6 @@ namespace LRCounter.Controllers
             ? PPCalculator.CalculatePP(_selfBestAccuracy, StarRating)
             : 0;
 
-        // Threshold計算で取得するランクスコアのページ数（1ページ100件・並列取得）。101位以下の微小寄与まで
-        // 反映するため深めに取る。0.1pp判定なら必要な深さは概ね rank≈250 までなので3ページ(300件)で十分。
-        private const int ScorePagesToFetch = 3;
         // 「トータルが増えた」とみなす最小増分(pp)。この分だけ増える最低スコアを Threshold とする。
         private const double GainEpsilon = 0.1;
 
@@ -88,7 +85,7 @@ namespace LRCounter.Controllers
             ScoreController scoreController,
             GameplayCoreSceneSetupData sceneSetupData,
             PluginConfig config,
-            ScoreSaberApiService apiService,
+            PlayerDataCache playerDataCache,
             GameEnergyCounter energyCounter,
             LRResultStore resultStore,
             PlayerDataModel playerDataModel)
@@ -96,7 +93,7 @@ namespace LRCounter.Controllers
             _scoreController = scoreController;
             _sceneSetupData = sceneSetupData;
             _config = config;
-            _apiService = apiService;
+            _playerDataCache = playerDataCache;
             _energyCounter = energyCounter;
             _resultStore = resultStore;
             _playerDataModel = playerDataModel;
@@ -119,8 +116,8 @@ namespace LRCounter.Controllers
             // ローカルの自己ベスト（PB）精度を読む（ネットワーク不要・即時）
             ComputeSelfBestAccuracy();
 
-            // Star評価をScoreSaber APIから取得する
-            Plugin.Log.Info("[LRCounter] Fetching star rating from ScoreSaber...");
+            // Star評価を取得する（キャッシュ済みなら即時、初回のみScoreSaber APIを叩く）
+            Plugin.Log.Info("[LRCounter] Fetching star rating...");
             double fetched = await FetchStarRatingAsync();
             if (fetched > 0)
             {
@@ -156,7 +153,44 @@ namespace LRCounter.Controllers
                 RightTracker.CutNotes,
                 RightTracker.TotalNotes);
 
+            // クリアまで到達したプレイなら、推定PPをキャッシュへローカル反映する（API呼び出しなし）。
+            // これでセッション中に出した新スコアが次のThresholdベースラインに反映される。
+            TryUpdateCachedScore();
+
             GC.SuppressFinalize(this);
+        }
+
+        // 今回のプレイの推定PPでキャッシュ内の自己スコアを更新する。
+        // ScoreSaberに実際に提出される（＝クリアした）プレイだけを対象にするため、
+        // 全ノーツを判定し終えたかどうかで判定する。途中リスタート・手動退出・(NFなしの)失敗は
+        // 最大スコアが満たないのでここで弾ける。
+        // 注意: スコア修飾子（Slower Song等）使用時は提出PPが推定より低くなるが、
+        // Thresholdラインがやや高めに出るだけなので許容する。
+        private void TryUpdateCachedScore()
+        {
+            try
+            {
+                if (StarRating <= 0 || TotalPP <= 0) return;          // アンランクは対象外
+                if (_penaltyApplied) return;                          // NF失敗は提出スコアが半減するので推定が合わない
+                if (_sceneSetupData.practiceSettings != null) return; // 練習モードは提出されない
+
+                string? hash = GetCurrentMapHash();
+                if (hash == null) return;
+
+                int fullMaxScore = ScoreModel.ComputeMaxMultipliedScoreForBeatmap(_sceneSetupData.transformedBeatmapData);
+                if (fullMaxScore <= 0 || _maxTotalScore < fullMaxScore) return; // クリアまで到達していない
+
+                var key = _sceneSetupData.beatmapKey;
+                _playerDataCache.UpdateLocalScore(
+                    hash,
+                    ToScoreSaberDifficulty(key.difficulty),
+                    $"Solo{key.beatmapCharacteristic.serializedName}",
+                    TotalPP);
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.Warn($"[LRCounter] TryUpdateCachedScore failed: {ex.Message}");
+            }
         }
 
         // ─── 自己ベスト（ローカルPB）の取得 ─────────────────────────────────────────
@@ -186,7 +220,7 @@ namespace LRCounter.Controllers
 
         // ─── Star評価の取得 ────────────────────────────────────────────────────────
 
-        // 現在プレイ中の譜面のStar評価をScoreSaber APIから取得する
+        // 現在プレイ中の譜面のStar評価を取得する（PlayerDataCache経由・セッション中キャッシュ）
         private Task<double> FetchStarRatingAsync()
         {
             var key = _sceneSetupData.beatmapKey;
@@ -204,7 +238,7 @@ namespace LRCounter.Controllers
             int diff = ToScoreSaberDifficulty(key.difficulty);
             string gameMode = $"Solo{key.beatmapCharacteristic.serializedName}";
 
-            return _apiService.GetLeaderboardStarsAsync(hash, diff, gameMode);
+            return _playerDataCache.GetStarRatingAsync(hash, diff, gameMode);
         }
 
         // Star評価が確定したら左右トラッカーをリセットしてStar値を設定する
@@ -229,16 +263,17 @@ namespace LRCounter.Controllers
 
         // ─── Threshold（ランクアップ必要PP）の計算 ────────────────────────────────
 
-        // プレイヤーのTop100スコアを取得し、今曲でいくつ以上のPPを出せばランクが上がるかを計算する
+        // キャッシュ済みのランクスコア一覧から、今曲でいくつ以上のPPを出せばランクが上がるかを計算する
         private async Task InitThresholdAsync()
         {
             try
             {
-                // SteamIDからプレイヤーIDを取得
-                string? playerId = await _apiService.GetPlayerIdAsync();
-                if (string.IsNullOrEmpty(playerId))
+                // プレイヤーデータはAppスコープのキャッシュから読む（APIは起動時の1回だけ。
+                // 起動時に失敗していた場合のみここで再取得される）
+                bool loaded = await _playerDataCache.EnsureLoadedAsync();
+                if (!loaded)
                 {
-                    Plugin.Log.Warn("[LRCounter] Could not get player ID; threshold disabled.");
+                    Plugin.Log.Warn("[LRCounter] Player data not available; threshold disabled.");
                     return;
                 }
 
@@ -248,16 +283,10 @@ namespace LRCounter.Controllers
                 int currentDiff = ToScoreSaberDifficulty(currentKey.difficulty);
                 string currentMode = $"Solo{currentKey.beatmapCharacteristic.serializedName}";
 
-                // ランクスコア（深めに取得）と現在の合計PPを並行して取得（どちらも時間がかかるため）。
-                // 101位以下の微小寄与まで反映するため Top100 ではなく複数ページ取得する。
-                var scoresTask = _apiService.GetTopScoresAsync(playerId!, ScorePagesToFetch);
-                var playerPPTask = _apiService.GetPlayerTotalPPAsync(playerId!);
-                await Task.WhenAll(scoresTask, playerPPTask);
+                PlayerTotalPP = _playerDataCache.TotalPP;
+                Plugin.Log.Info($"[LRCounter] PlayerTotalPP={PlayerTotalPP:F2} (cached)");
 
-                PlayerTotalPP = playerPPTask.Result;
-                Plugin.Log.Info($"[LRCounter] PlayerTotalPP={PlayerTotalPP:F2}");
-
-                var rankedScores = scoresTask.Result;
+                var rankedScores = _playerDataCache.GetScoresSnapshot();
 
                 // ベースライン＝既存スコア込みの現在の重み付けトータル（全件）。これを gainEpsilon 以上超えれば「底上げ」。
                 var allPp = rankedScores.Select(s => s.pp).ToList(); // PP降順（取得側で降順ソート済み）
