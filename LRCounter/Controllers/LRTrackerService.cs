@@ -42,11 +42,9 @@ namespace LRCounter.Controllers
         public double PlayerTotalPP { get; private set; } = 0; // ScoreSaberに登録されているプレイヤーの現在合計PP
         // ローカルのPlayerDataから読んだ、この譜面の自己ベスト精度(0〜1)。未プレイ/不明は0。
         private double _selfBestAccuracy = 0;
-        // 自己ベスト精度を現在のStarでPP換算した値。記録なし/アンランクは0。
-        // 合算TotalPPがこれを超えた＝自己ベストの精度を更新したとみなす（PPは精度の単調関数）。
-        public double SelfBestPP => _selfBestAccuracy > 0 && StarRating > 0
-            ? PPCalculator.CalculatePP(_selfBestAccuracy, StarRating)
-            : 0;
+        // スコア更新判定は精度同士で比較する（PPは精度の単調関数なのでPP比較と等価）。
+        // Star評価（=ScoreSaber API）に依存しないので、API失敗時やアンランク譜面でも判定できる。
+        public double SelfBestAccuracy => _selfBestAccuracy;
 
         // 「トータルが増えた」とみなす最小増分(pp)。この分だけ増える最低スコアを Threshold とする。
         private const double GainEpsilon = 0.1;

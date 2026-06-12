@@ -63,7 +63,7 @@ namespace LRCounter.Configuration
         // バー外周を縁取る枠の色。合算PPが各ラインを超えたときに点灯する。
         //   BorderColorScoreUpdate … 自己ベストPP超え（スコア更新）
         //   BorderColorPP          … 取得ライン(ThresholdPP)超え（PP取得）。スコア更新より優先。
-        public virtual string BorderColorScoreUpdate { get; set; } = "#00ccff";
+        public virtual string BorderColorScoreUpdate { get; set; } = "#ffff00";
         public virtual string BorderColorPP { get; set; } = "#ffffff";
 
         // Changed イベント（IPA が生成するストアのためのメソッド）

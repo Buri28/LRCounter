@@ -485,15 +485,13 @@ namespace LRCounter.Controllers.Display
         // 白(PP取得=白いライン超え)が最優先。次点で青(スコア更新=自己ベスト精度超え)。
         private Color BorderColorForThresholds()
         {
-            // アンランクはPP概念が無いので点灯しない
-            if (_tracker.StarRating <= 0) return Color.clear;
-
-            double totalPP = _tracker.TotalPP;
-            // PP取得：白いライン(ThresholdPP)を超えたか。Threshold未取得(0)のうちは判定しない。
-            if (_tracker.ThresholdPP > 0 && totalPP >= _tracker.ThresholdPP)
+            // PP取得：白いライン(ThresholdPP)を超えたか。ランク譜面のみ（アンランクはPP概念が無い）。
+            // Threshold未取得(0)のうちは判定しない。
+            if (_tracker.StarRating > 0 && _tracker.ThresholdPP > 0 && _tracker.TotalPP >= _tracker.ThresholdPP)
                 return LRDisplayCommon.ParseHex(_config.BorderColorPP);
-            // スコア更新：自己ベストPPを超えたか。自己ベスト未取得(SelfBestPP=0)のときは判定しない（誤点灯防止）。
-            if (_tracker.SelfBestPP > 0 && totalPP >= _tracker.SelfBestPP)
+            // スコア更新：自己ベスト精度を超えたか。精度同士の比較なのでStar評価（API）に依存せず、
+            // API失敗時・アンランク譜面でも点灯する。自己ベスト未取得(0)のときは判定しない（誤点灯防止）。
+            if (_tracker.SelfBestAccuracy > 0 && _tracker.TotalAccuracy >= _tracker.SelfBestAccuracy)
                 return LRDisplayCommon.ParseHex(_config.BorderColorScoreUpdate);
             return Color.clear;
         }
