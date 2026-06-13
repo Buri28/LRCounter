@@ -1,4 +1,5 @@
 using LRCounter.Configuration;
+using LRCounter.Controllers.Results;
 using LRCounter.Models;
 using System;
 using System.Collections.Generic;
@@ -6,7 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Zenject;
 
-namespace LRCounter.Controllers
+namespace LRCounter.Controllers.Gameplay
 {
     // ノーツイベントを受け取り、左右の精度・PPをリアルタイムで追跡するサービス
     // ゲームプレイシーン全体で1つだけ存在する（Zenjectがシングルトンで管理）

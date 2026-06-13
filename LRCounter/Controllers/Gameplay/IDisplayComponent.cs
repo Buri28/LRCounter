@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace LRCounter.Controllers.Display
+namespace LRCounter.Controllers.Gameplay
 {
     // 表示コンポーネント共通インターフェース。
     // コントローラーは各要素をこの1つの型でまとめて扱う（リストで一括 Build/Update/… できる＝拡張しやすい）。

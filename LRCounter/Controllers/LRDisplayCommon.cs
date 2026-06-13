@@ -1,10 +1,10 @@
 using System.Linq;
 using LRCounter.Configuration;
-using LRCounter.Controllers;
+using LRCounter.Controllers.Gameplay;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace LRCounter.Controllers.Display
+namespace LRCounter.Controllers
 {
     // 表示コンポーネント間で共有するユーティリティ。
     // 色帯（バンド方式）・スプライト生成・UINoGlow・目盛り線・PP色判定をまとめる。

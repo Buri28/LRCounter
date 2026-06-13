@@ -1,4 +1,4 @@
-namespace LRCounter.Controllers
+namespace LRCounter.Controllers.Results
 {
     // 直近のプレイの「左右の平均精度・PP」を保持する永続ストア（App スコープ）。
     // ゲームプレイシーン(Player)で書き込み、リザルト画面(Menu)で読み出すための受け渡し用。

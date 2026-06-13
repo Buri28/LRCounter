@@ -5,7 +5,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace LRCounter.Controllers.Display
+namespace LRCounter.Controllers.Gameplay
 {
     // 左右の精度バー（背景・塗り・目盛り・フラッシュ・%/PPラベル・目標ライン）をまとめて扱う。
     internal class AccuracyBars : IDisplayComponent

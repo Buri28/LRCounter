@@ -1,12 +1,11 @@
 using HMUI;
 using LRCounter.Configuration;
-using LRCounter.Controllers.Display;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
 
-namespace LRCounter.Controllers
+namespace LRCounter.Controllers.Gameplay
 {
     // ゲーム中に各表示要素（精度バー/合算ラベル/デバッグラベル）を
     // ワールドスペースCanvasにまとめて表示するコントローラー。

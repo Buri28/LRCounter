@@ -1,13 +1,12 @@
 using System;
 using HMUI;
 using LRCounter.Configuration;
-using LRCounter.Controllers.Display;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
 
-namespace LRCounter.Controllers
+namespace LRCounter.Controllers.Results
 {
     // リザルト画面（ステージクリア）の上部に、左右の結果を中央の縦線で区切って表示する（メニュースコープ）。
     // 値は LRResultStore（App スコープ）経由でゲームプレイシーンから受け取る。
