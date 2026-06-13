@@ -5,7 +5,7 @@
 Beat Saber で**左右の手それぞれの精度・PP をリアルタイム表示**するカウンターです。
 (右手と左手のスコアが違いすぎる人向け)
 
-- 対応バージョン: Beat Saber **1.40.8**
+- 対応バージョン: Beat Saber **1.39.1**／**1.40.8**
 - 依存: BSIPA `^4.3.0` / BeatSaberMarkupLanguage `^1.12.0` / SiraUtil `^3.1.0`
 - 設定: ソロ選曲画面の **MODS タブ → LRCounter**、または `UserData/LRCounter.json`
 
