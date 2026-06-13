@@ -40,8 +40,6 @@ namespace LRCounter.Controllers.Gameplay
         public double StarRating { get; private set; } = 0; // 譜面のStar評価（0=アンランク）
         public double TotalPP { get; private set; } = 0; // 現在のスコアから推定される合計PP
         public double ThresholdPP { get; private set; } = 0; // ランクアップに必要な最低PP
-        public double PlayerTotalPP { get; private set; } = 0; // ScoreSaberに登録されているプレイヤーの現在合計PP
-
         // ローカルのPlayerDataから読んだ、この譜面の合算（両手）自己ベスト精度(0〜1)。未プレイ/不明は0。
         // 合算精度がこれを超えたら「両手の自己ベスト更新」として左右とも黄色のボーダーを点ける。
         // スコア更新判定は精度同士で比較する（PPは精度の単調関数なのでPP比較と等価）。
@@ -67,21 +65,14 @@ namespace LRCounter.Controllers.Gameplay
         // 精度は生の集計比なので係数の影響を受けない（分子・分母とも同じ係数で打ち消される）。
         public double TotalAccuracy => _maxTotalScore > 0 ? (double)_totalScore / _maxTotalScore : 0;
 
-        // ゲーム本体が確定させたスコア。scoreDidChangeEvent で最新値を受け取って保持する。
-        // （scoringForNoteFinishedEvent 内で直読みすると全ノーツ処理前＝1ノーツ前の値になるため）
-        // multipliedScore = 倍率込み・修飾前（生）。modifiedScore = NF・譜面修飾込みの実表示スコア。
-        private int _gameMultipliedScore = 0;
+        // ゲーム本体が確定させた実表示スコア（NF・譜面修飾込みの modifiedScore）。scoreDidChangeEvent で
+        // 最新値を受け取って保持する（scoringForNoteFinishedEvent 内で直読みすると1ノーツ前の値になるため）。
+        // デバッグ表示で自前集計スコアとの突き合わせに使う。
         private int _gameModifiedScore = 0;
-        public int GameMultipliedScore => _gameMultipliedScore;
         public int GameModifiedScore => _gameModifiedScore;
 
         // ノーツを切るたびに発火。DisplayControllerが購読して表示を更新する
         public event Action? OnPPUpdated;
-        // ThresholdPPを初めて超えたときに1回だけ発火
-        public event Action? OnThresholdExceeded;
-
-        // ThresholdExceededを一度だけ発火させるためのフラグ
-        private bool _thresholdExceededFired = false;
 
         private readonly LRResultStore _resultStore;
         private readonly PlayerDataModel _playerDataModel; // ローカルの合算自己ベストスコア参照用
@@ -367,8 +358,7 @@ namespace LRCounter.Controllers.Gameplay
                 int currentDiff = ToScoreSaberDifficulty(currentKey.difficulty);
                 string currentMode = $"Solo{currentKey.beatmapCharacteristic.serializedName}";
 
-                PlayerTotalPP = _playerDataCache.TotalPP;
-                Plugin.Log.Info($"[LRCounter] PlayerTotalPP={PlayerTotalPP:F2} (cached)");
+                Plugin.Log.Info($"[LRCounter] PlayerTotalPP={_playerDataCache.TotalPP:F2} (cached)");
 
                 var rankedScores = _playerDataCache.GetScoresSnapshot();
 
@@ -461,23 +451,16 @@ namespace LRCounter.Controllers.Gameplay
                 TotalPP = PPCalculator.CalculatePP(totalAcc, StarRating);
             }
 
-            // ThresholdPPを初めて超えたら1回だけイベント発火
-            if (!_thresholdExceededFired && ThresholdPP > 0 && TotalPP >= ThresholdPP)
-            {
-                _thresholdExceededFired = true;
-                OnThresholdExceeded?.Invoke();
-            }
-
             // 表示を更新させる
             OnPPUpdated?.Invoke();
         }
 
-        // ゲームのスコアが確定（再計算）されたタイミングで呼ばれる。multipliedScore はこの時点で
+        // ゲームのスコアが確定（再計算）されたタイミングで呼ばれる。modifiedScore はこの時点で
         // 今切ったノーツまで反映済みなので、検算用のゲームスコアをここで最新値に更新する。
         // 更新後に表示も更新させ、デバッグ表示が1ノーツ前の値を出さないようにする。
+        // （multipliedScore は使わないが scoreDidChangeEvent のシグネチャ上、引数として受け取る）
         private void OnScoreDidChange(int multipliedScore, int modifiedScore)
         {
-            _gameMultipliedScore = multipliedScore;
             _gameModifiedScore = modifiedScore;
             OnPPUpdated?.Invoke();
         }

@@ -4,7 +4,7 @@ namespace LRCounter.Controllers.Results
     // ゲームプレイシーン(Player)で書き込み、リザルト画面(Menu)で読み出すための受け渡し用。
     public class LRResultStore
     {
-        public bool HasResult { get; private set; }       // 1曲ぶんの結果が入っているか
+        public bool HasResult { get; private set; }       // 1曲分の結果が入っているか
         public bool HasStar { get; private set; }          // ランク譜面か（PPを表示してよいか）
         public double LeftAccuracyPercent { get; private set; }  // 左手の平均精度(%)
         public double RightAccuracyPercent { get; private set; } // 右手の平均精度(%)
