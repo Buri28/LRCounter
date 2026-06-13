@@ -32,6 +32,9 @@ namespace LRCounter.Installers
 
             // 直近プレイの左右結果を保持する共有ストア（Player/Menu 双方から参照される）
             Container.Bind<LRResultStore>().AsSingle();
+
+            // 譜面ごとの左右ベスト精度を永続化するストア（リザルトの差分表示・自己ベスト更新に使う）
+            Container.BindInterfacesAndSelfTo<HandAccuracyStore>().AsSingle();
         }
     }
 }

@@ -39,8 +39,9 @@ namespace LRCounter.Controllers.Display
         private const float FlashDuration = 0.4f;
 
         // ─── 閾値の枠（バー外周を縁取る。全面塗りだと塗り色とブレンドして判別しにくいため枠方式） ───
-        // 合算TotalPPで判定し左右同時に点灯する。白(PP取得)を優先、青(スコア更新)が下位。
-        // バーの外側に出すので塗り・赤フラッシュ（バー内側）とは重ならず、両立する。
+        // 左右独立に点灯する。白(PP取得＝合算ThresholdPP超え)を優先し両手同時。黄(スコア更新)は下位で、
+        // 合算の自己ベスト精度超えなら両手、その手の自己ベスト精度超えならその手だけ点灯する。
+        // バーの外側に出すので塗り・赤フラッシュ（バー内側）とは重ならず両立する。
         // 枠の色は設定値（BorderColorScoreUpdate / BorderColorPP）から都度読む。
         private const float BorderThickness = 0.4f;                                 // 枠の太さ（Canvas論理単位）
 
@@ -168,10 +169,10 @@ namespace LRCounter.Controllers.Display
 
             UpdateTargetLine();
 
-            // 閾値の枠：合算TotalPPで判定し、左右バーを同時に縁取る（白=PP取得を優先 / 青=スコア更新）。
-            Color borderColor = BorderColorForThresholds();
-            SetBorder(_leftBorder, borderColor);
-            SetBorder(_rightBorder, borderColor);
+            // 閾値の枠：左右それぞれ独立に判定する。白=PP取得(合算・両手同時)を最優先、
+            // 次に黄=その手が自分の自己ベスト精度を更新（片手ごと・点灯はその手だけ）。
+            SetBorder(_leftBorder, BorderColorForHand(_tracker.LeftTracker.Accuracy, _tracker.LeftBestAccuracy));
+            SetBorder(_rightBorder, BorderColorForHand(_tracker.RightTracker.Accuracy, _tracker.RightBestAccuracy));
         }
 
         public void TickFlash()
@@ -481,17 +482,24 @@ namespace LRCounter.Controllers.Display
             }
         }
 
-        // 合算TotalPPと各閾値から枠の色を決める。点灯なしは透明（Color.clear）。
-        // 白(PP取得=白いライン超え)が最優先。次点で青(スコア更新=自己ベスト精度超え)。
-        private Color BorderColorForThresholds()
+        // 片手ぶんの枠の色を決める。点灯なしは透明（Color.clear）。
+        // 白(PP取得=白いライン超え)が最優先。次点で黄(スコア更新)。
+        //   handAccuracy     : その手の現在精度(0〜1)
+        //   handBestAccuracy : その手の前回までの自己ベスト精度(0〜1)。記録なしは0。
+        private Color BorderColorForHand(double handAccuracy, double handBestAccuracy)
         {
-            // PP取得：白いライン(ThresholdPP)を超えたか。ランク譜面のみ（アンランクはPP概念が無い）。
-            // Threshold未取得(0)のうちは判定しない。
+            // PP取得：白いライン(ThresholdPP)を合算TotalPPで超えたか。PPは合算の概念なので両手同時に点灯する。
+            // ランク譜面のみ（アンランクはPP概念が無い）。Threshold未取得(0)のうちは判定しない。
             if (_tracker.StarRating > 0 && _tracker.ThresholdPP > 0 && _tracker.TotalPP >= _tracker.ThresholdPP)
                 return LRDisplayCommon.ParseHex(_config.BorderColorPP);
-            // スコア更新：自己ベスト精度を超えたか。精度同士の比較なのでStar評価（API）に依存せず、
-            // API失敗時・アンランク譜面でも点灯する。自己ベスト未取得(0)のときは判定しない（誤点灯防止）。
-            if (_tracker.SelfBestAccuracy > 0 && _tracker.TotalAccuracy >= _tracker.SelfBestAccuracy)
+
+            // スコア更新（黄）。次の2条件のいずれかで点灯。精度同士の比較なのでStar評価(API)に依存せず、
+            // API失敗時・アンランク譜面でも点灯する。どちらも記録なし(0)のときは判定しない（誤点灯防止）。
+            //  (1) 合算（両手）の自己ベスト精度を更新 → 左右とも点灯
+            //  (2) その手の自己ベスト精度を更新      → その手だけ点灯
+            bool combinedUpdate = _tracker.SelfBestAccuracy > 0 && _tracker.TotalAccuracy >= _tracker.SelfBestAccuracy;
+            bool handUpdate = handBestAccuracy > 0 && handAccuracy >= handBestAccuracy;
+            if (combinedUpdate || handUpdate)
                 return LRDisplayCommon.ParseHex(_config.BorderColorScoreUpdate);
             return Color.clear;
         }

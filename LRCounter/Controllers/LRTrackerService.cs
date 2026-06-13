@@ -40,11 +40,18 @@ namespace LRCounter.Controllers
         public double TotalPP { get; private set; } = 0; // 現在のスコアから推定される合計PP
         public double ThresholdPP { get; private set; } = 0; // ランクアップに必要な最低PP
         public double PlayerTotalPP { get; private set; } = 0; // ScoreSaberに登録されているプレイヤーの現在合計PP
-        // ローカルのPlayerDataから読んだ、この譜面の自己ベスト精度(0〜1)。未プレイ/不明は0。
-        private double _selfBestAccuracy = 0;
+
+        // ローカルのPlayerDataから読んだ、この譜面の合算（両手）自己ベスト精度(0〜1)。未プレイ/不明は0。
+        // 合算精度がこれを超えたら「両手の自己ベスト更新」として左右とも黄色のボーダーを点ける。
         // スコア更新判定は精度同士で比較する（PPは精度の単調関数なのでPP比較と等価）。
         // Star評価（=ScoreSaber API）に依存しないので、API失敗時やアンランク譜面でも判定できる。
+        private double _selfBestAccuracy = 0;
         public double SelfBestAccuracy => _selfBestAccuracy;
+
+        // この譜面の左右ベスト精度(0〜1)。曲開始時に HandAccuracyStore から読む（＝今回プレイで更新する前の値）。
+        // 片手ごとのボーダー点灯（その手の自己ベスト精度更新）判定に使う。記録なし／練習モードは0。
+        public double LeftBestAccuracy { get; private set; }
+        public double RightBestAccuracy { get; private set; }
 
         // 「トータルが増えた」とみなす最小増分(pp)。この分だけ増える最低スコアを Threshold とする。
         private const double GainEpsilon = 0.1;
@@ -76,7 +83,8 @@ namespace LRCounter.Controllers
         private bool _thresholdExceededFired = false;
 
         private readonly LRResultStore _resultStore;
-        private readonly PlayerDataModel _playerDataModel; // ローカルの自己ベストスコア参照用
+        private readonly PlayerDataModel _playerDataModel; // ローカルの合算自己ベストスコア参照用
+        private readonly HandAccuracyStore _handAccuracyStore; // 譜面ごとの左右ベスト精度（永続）
 
         [Inject]
         public LRTrackerService(
@@ -86,7 +94,8 @@ namespace LRCounter.Controllers
             PlayerDataCache playerDataCache,
             GameEnergyCounter energyCounter,
             LRResultStore resultStore,
-            PlayerDataModel playerDataModel)
+            PlayerDataModel playerDataModel,
+            HandAccuracyStore handAccuracyStore)
         {
             _scoreController = scoreController;
             _sceneSetupData = sceneSetupData;
@@ -95,6 +104,7 @@ namespace LRCounter.Controllers
             _energyCounter = energyCounter;
             _resultStore = resultStore;
             _playerDataModel = playerDataModel;
+            _handAccuracyStore = handAccuracyStore;
         }
 
         // 曲開始時にZenjectから呼ばれる。非同期でStar評価とThresholdを取得する
@@ -111,8 +121,10 @@ namespace LRCounter.Controllers
             _energyCounter.gameEnergyDidChangeEvent += OnEnergyChanged;
             Plugin.Log.Info("[LRCounter] Subscribed to scoringForNoteFinishedEvent / gameEnergyDidChangeEvent");
 
-            // ローカルの自己ベスト（PB）精度を読む（ネットワーク不要・即時）
+            // ローカルの合算自己ベスト（PB）精度を読む（ネットワーク不要・即時）
             ComputeSelfBestAccuracy();
+            // この譜面の左右ベスト精度を読む（永続ストアから・ネットワーク不要・即時）
+            LoadHandBestAccuracies();
 
             // Star評価を取得する（キャッシュ済みなら即時、初回のみScoreSaber APIを叩く）
             Plugin.Log.Info("[LRCounter] Fetching star rating...");
@@ -139,6 +151,9 @@ namespace LRCounter.Controllers
             _scoreController.scoreDidChangeEvent -= OnScoreDidChange;
             _energyCounter.gameEnergyDidChangeEvent -= OnEnergyChanged;
 
+            // 左右ベスト精度との差分を求める（フルクリア時のみ。Set前に求めて結果ストアへ渡す）。
+            (bool hasDelta, double leftDelta, double rightDelta) = UpdateAndDiffHandBests();
+
             // 曲終了時点の左右の平均精度・PPをリザルト画面用に保存する
             _resultStore.Set(
                 LeftTracker.Accuracy * 100.0,
@@ -149,7 +164,10 @@ namespace LRCounter.Controllers
                 LeftTracker.CutNotes,
                 LeftTracker.TotalNotes,
                 RightTracker.CutNotes,
-                RightTracker.TotalNotes);
+                RightTracker.TotalNotes,
+                hasDelta,
+                leftDelta,
+                rightDelta);
 
             // クリアまで到達したプレイなら、推定PPをキャッシュへローカル反映する（API呼び出しなし）。
             // これでセッション中に出した新スコアが次のThresholdベースラインに反映される。
@@ -191,9 +209,52 @@ namespace LRCounter.Controllers
             }
         }
 
-        // ─── 自己ベスト（ローカルPB）の取得 ─────────────────────────────────────────
+        // ─── 左右ベスト精度（永続）の更新と差分 ──────────────────────────────────────
 
-        // ローカルのPlayerDataから、この譜面の自己ベストスコアを読み、最大スコアで割って精度(0〜1)を求める。
+        // フルクリア時に、この譜面の左右ベスト精度を更新し、更新前ベストとの差分(%)を返す。
+        // 戻り値 hasDelta=false: 差分を表示しない（練習モード・未クリア・初回プレイ・キー取得失敗）。
+        // 練習モードや途中退出は提出と無関係＝ベストとして不適切なので除外する（推定PB汚染を防ぐ）。
+        private (bool hasDelta, double leftDelta, double rightDelta) UpdateAndDiffHandBests()
+        {
+            try
+            {
+                if (_sceneSetupData.practiceSettings != null) return (false, 0, 0); // 練習は記録しない
+
+                int fullMaxScore = ScoreModel.ComputeMaxMultipliedScoreForBeatmap(_sceneSetupData.transformedBeatmapData);
+                if (fullMaxScore <= 0 || _maxTotalScore < fullMaxScore) return (false, 0, 0); // フルクリアのみ
+
+                string key = BuildMapKey();
+                double curLeft = LeftTracker.Accuracy * 100.0;
+                double curRight = RightTracker.Accuracy * 100.0;
+
+                // 差分は「更新前のベスト」と比較するので、更新前に読み出す。
+                bool had = _handAccuracyStore.TryGet(key, out double oldLeft, out double oldRight);
+                // 付随情報（左右PP・曲名・作者）も保存する。PPはアンランクなら0。
+                var level = _sceneSetupData.beatmapLevel;
+                string songName = level != null ? level.songName : "";
+                string author = level != null && level.allMappers != null ? string.Join(", ", level.allMappers) : "";
+                _handAccuracyStore.UpdateIfBetter(key, curLeft, curRight, LeftTracker.PP, RightTracker.PP, songName, author);
+
+                if (!had) return (false, 0, 0); // 初回プレイは比較対象が無いので差分なし
+                return (true, curLeft - oldLeft, curRight - oldRight);
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.Warn($"[LRCounter] UpdateAndDiffHandBests failed: {ex.Message}");
+                return (false, 0, 0);
+            }
+        }
+
+        // 左右ベスト精度の永続キー。難易度・ゲームモード違いは別譜面として扱う。
+        private string BuildMapKey()
+        {
+            var key = _sceneSetupData.beatmapKey;
+            return $"{key.levelId}|{(int)key.difficulty}|{key.beatmapCharacteristic.serializedName}";
+        }
+
+        // ─── 自己ベスト精度の読み込み ────────────────────────────────────────────────
+
+        // ローカルのPlayerDataから、この譜面の合算（両手）自己ベストスコアを読み、最大スコアで割って精度(0〜1)を求める。
         // 画面の「PB」表示と同じローカル記録を使うのでネットワーク不要。未プレイ/記録なしは0のまま。
         // 注意: highScore は修飾子込みの実スコアなので、スコア修飾子(NF/Faster等)を付けた記録は精度がずれる。
         private void ComputeSelfBestAccuracy()
@@ -213,6 +274,30 @@ namespace LRCounter.Controllers
             catch (Exception ex)
             {
                 Plugin.Log.Warn($"[LRCounter] ComputeSelfBestAccuracy failed: {ex.Message}");
+            }
+        }
+
+        // ─── 左右ベスト精度（永続）の読み込み ────────────────────────────────────────
+
+        // この譜面の左右ベスト精度を HandAccuracyStore から読み、0〜1 に直して保持する。
+        // 今回プレイで更新する前の値（＝前回までのベスト）なので、ボーダー点灯の比較基準になる。
+        // 練習モードは記録対象外なのでベースラインも読まない（誤点灯防止）。記録なしは0のまま。
+        private void LoadHandBestAccuracies()
+        {
+            try
+            {
+                if (_sceneSetupData.practiceSettings != null) return; // 練習は比較対象にしない
+
+                if (_handAccuracyStore.TryGet(BuildMapKey(), out double left, out double right))
+                {
+                    LeftBestAccuracy = left / 100.0;   // 保存は%なので0〜1へ
+                    RightBestAccuracy = right / 100.0;
+                    Plugin.Log.Info($"[LRCounter] HandBest baseline: L={left:F2}% R={right:F2}%");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.Warn($"[LRCounter] LoadHandBestAccuracies failed: {ex.Message}");
             }
         }
 
