@@ -32,6 +32,20 @@ namespace LRCounter.Controllers
             Http.Timeout = TimeSpan.FromSeconds(10); // タイムアウト10秒
         }
 
+        // 例外の真因を1行に整形する。HttpRequestException の "An error occurred while sending the request"
+        // は定型文で、実際の原因（SocketException=接続切断 / TLS失敗 / ObjectDisposed=HttpClient破棄 等）は
+        // InnerException 側に入っている。切り分けのため型名込みで内側まで全部つなげて出す。
+        private static string Describe(Exception ex)
+        {
+            var sb = new System.Text.StringBuilder();
+            for (Exception? e = ex; e != null; e = e.InnerException)
+            {
+                if (sb.Length > 0) sb.Append(" -> ");
+                sb.Append(e.GetType().Name).Append(": ").Append(e.Message);
+            }
+            return sb.ToString();
+        }
+
         // ─── v1フォールバック制御 ──────────────────────────────────────────────────
 
         // v2 APIが失敗して v1 で成功したら、以降このセッションは v1 に直行する
@@ -71,7 +85,7 @@ namespace LRCounter.Controllers
             }
             catch (Exception ex)
             {
-                Plugin.Log.Warn($"[ScoreSaberApi] GetPlayerId failed: {ex.Message}");
+                Plugin.Log.Warn($"[ScoreSaberApi] GetPlayerId failed: {Describe(ex)}");
                 return null;
             }
         }
@@ -120,7 +134,7 @@ namespace LRCounter.Controllers
             }
             catch (Exception ex)
             {
-                Plugin.Log.Warn($"[ScoreSaberApi] GET {fieldName} failed: {ex.Message}");
+                Plugin.Log.Warn($"[ScoreSaberApi] GET {fieldName} failed: {Describe(ex)}");
             }
             return null;
         }
@@ -182,7 +196,7 @@ namespace LRCounter.Controllers
             }
             catch (Exception ex)
             {
-                Plugin.Log.Warn($"[ScoreSaberApi] GetLeaderboardStars failed: {ex.Message}");
+                Plugin.Log.Warn($"[ScoreSaberApi] GetLeaderboardStars failed: {Describe(ex)}");
             }
             return null;
         }
@@ -220,7 +234,7 @@ namespace LRCounter.Controllers
             }
             catch (Exception ex)
             {
-                Plugin.Log.Warn($"[ScoreSaberApi] GetTopScores failed: {ex.Message}");
+                Plugin.Log.Warn($"[ScoreSaberApi] GetTopScores failed: {Describe(ex)}");
             }
             return scores;
         }
@@ -290,7 +304,7 @@ namespace LRCounter.Controllers
             }
             catch (Exception ex)
             {
-                Plugin.Log.Info($"[ScoreSaberApi] page fetch skipped: {ex.Message}");
+                Plugin.Log.Info($"[ScoreSaberApi] page fetch skipped: {Describe(ex)}");
                 return "";
             }
         }
