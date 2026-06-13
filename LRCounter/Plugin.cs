@@ -22,6 +22,14 @@ namespace LRCounter
         // 設定ファイル（UserData/LRCounter.json）へのアクセス
         internal static PluginConfig Config { get; private set; } = null!;
 
+        // 詳細ログ。Config.DebugLogging が ON のときだけ Debug レベルで出力する（既定OFF）。
+        // Warn/Error は従来どおり Plugin.Log.Warn/Error で常時出力する。
+        internal static void DebugLog(string message)
+        {
+            if (Config != null && Config.DebugLogging)
+                Log.Debug(message);
+        }
+
         // IPAによってBeatSaber起動時に1回呼ばれるコンストラクタ
         [Init]
         public Plugin(IPALogger logger, Config conf, Zenjector zenjector)
@@ -44,7 +52,7 @@ namespace LRCounter
             // メニューシーン（設定画面）に設定UIを登録
             zenjector.Install<LRMenuInstaller>(Location.Menu, Config);
 
-            Log.Info("LRCounter initialized.");
+            DebugLog("LRCounter initialized.");
         }
 
         // アプリ起動時（Init後）に呼ばれる。Harmonyパッチを適用する
@@ -52,7 +60,7 @@ namespace LRCounter
         public void OnApplicationStart()
         {
             HarmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
-            Log.Info("LRCounter started.");
+            DebugLog("LRCounter started.");
         }
 
         // アプリ終了時に呼ばれる。Harmonyパッチを全て解除する
@@ -60,7 +68,7 @@ namespace LRCounter
         public void OnApplicationQuit()
         {
             HarmonyInstance.UnpatchSelf();
-            Log.Info("LRCounter exited.");
+            DebugLog("LRCounter exited.");
         }
     }
 }

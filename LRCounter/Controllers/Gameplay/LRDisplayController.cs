@@ -82,7 +82,7 @@ namespace LRCounter.Controllers.Gameplay
 
             if (refCanvas != null)
             {
-                Plugin.Log.Info("[LRCounter] Found ref canvas: " + refCanvas.name);
+                Plugin.DebugLog("[LRCounter] Found ref canvas: " + refCanvas.name);
                 refPos = refCanvas.transform.position;
                 refRot = refCanvas.transform.rotation;
                 refScale = refCanvas.transform.lossyScale;
@@ -105,7 +105,7 @@ namespace LRCounter.Controllers.Gameplay
             }
             canvas.overrideSorting = true;
 
-            Plugin.Log.Info($"[LRCounter] refPos={refPos}  refScale={refScale}  sortingLayer={canvas.sortingLayerName}");
+            Plugin.DebugLog($"[LRCounter] refPos={refPos}  refScale={refScale}  sortingLayer={canvas.sortingLayerName}");
             // Z はワールド座標でカメラ側へ DepthZ ぶん寄せて前面化する（傾きの影響を受けず高さは不変）。
             _canvasObject.transform.position = new Vector3(
                 refPos.x,

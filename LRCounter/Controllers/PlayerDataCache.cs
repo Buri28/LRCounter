@@ -49,7 +49,6 @@ namespace LRCounter.Controllers
         public void Initialize()
         {
             if (!_config.Enabled) return;
-            Plugin.Log.Info("[LRCounter] Prefetching player data at startup...");
             _ = EnsureLoadedAsync();
         }
 
@@ -89,7 +88,7 @@ namespace LRCounter.Controllers
 
                 TotalPP = totalPP.Value;
                 _scores = scores;
-                Plugin.Log.Info($"[LRCounter] PlayerDataCache loaded: totalPP={TotalPP:F2}, scores={_scores.Count}");
+                Plugin.DebugLog($"[LRCounter] PlayerDataCache loaded: totalPP={TotalPP:F2}, scores={_scores.Count}");
                 return true;
             }
             catch (Exception ex)
@@ -111,7 +110,7 @@ namespace LRCounter.Controllers
             var key = (hash, difficulty, gameMode);
             if (_starCache.TryGetValue(key, out double cached))
             {
-                Plugin.Log.Info($"[LRCounter] StarRating cache hit: {cached:F2}");
+                Plugin.DebugLog($"[LRCounter] StarRating cache hit: {cached:F2}");
                 return cached;
             }
 
@@ -144,7 +143,7 @@ namespace LRCounter.Controllers
             // 合計PPは重み付けトータルの増分だけ加算する（300件より下位の寄与はほぼ0なので十分正確）
             double newTotal = ScoreSaberApiService.WeightedTotal(_scores.Select(s => s.pp).ToList());
             TotalPP += newTotal - oldTotal;
-            Plugin.Log.Info($"[LRCounter] Local score updated: {newPP:F2}pp (totalPP {TotalPP:F2}, +{newTotal - oldTotal:F2})");
+            Plugin.DebugLog($"[LRCounter] Local score updated: {newPP:F2}pp (totalPP {TotalPP:F2}, +{newTotal - oldTotal:F2})");
         }
     }
 }

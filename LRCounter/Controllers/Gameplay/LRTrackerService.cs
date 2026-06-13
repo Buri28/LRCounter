@@ -111,7 +111,6 @@ namespace LRCounter.Controllers.Gameplay
             _scoreController.scoreDidChangeEvent += OnScoreDidChange;
             // 体力変化イベントを購読してエネルギーが0になったらペナルティを適用
             _energyCounter.gameEnergyDidChangeEvent += OnEnergyChanged;
-            Plugin.Log.Info("[LRCounter] Subscribed to scoringForNoteFinishedEvent / gameEnergyDidChangeEvent");
 
             // ローカルの合算自己ベスト（PB）精度を読む（ネットワーク不要・即時）
             ComputeSelfBestAccuracy();
@@ -119,17 +118,16 @@ namespace LRCounter.Controllers.Gameplay
             LoadHandBestAccuracies();
 
             // Star評価を取得する（キャッシュ済みなら即時、初回のみScoreSaber APIを叩く）
-            Plugin.Log.Info("[LRCounter] Fetching star rating...");
             double fetched = await FetchStarRatingAsync();
             if (fetched > 0)
             {
                 StarRating = fetched;
                 ApplyStarRating();
-                Plugin.Log.Info($"[LRCounter] Fetched StarRating={StarRating:F2}");
+                Plugin.DebugLog($"[LRCounter] Fetched StarRating={StarRating:F2}");
             }
             else
             {
-                Plugin.Log.Info("[LRCounter] Map is unranked or fetch failed.");
+                Plugin.DebugLog("[LRCounter] Map is unranked or fetch failed.");
             }
 
             // Threshold計算は時間がかかるので、待機せずバックグラウンドで実行
@@ -261,7 +259,7 @@ namespace LRCounter.Controllers.Gameplay
 
                 double acc = (double)stats.highScore / maxScore;
                 _selfBestAccuracy = acc < 0 ? 0 : (acc > 1 ? 1 : acc); // 念のため[0,1]に丸める
-                Plugin.Log.Info($"[LRCounter] SelfBest (local PB): {stats.highScore}/{maxScore} = {_selfBestAccuracy * 100:F2}%");
+                Plugin.DebugLog($"[LRCounter] SelfBest (local PB): {stats.highScore}/{maxScore} = {_selfBestAccuracy * 100:F2}%");
             }
             catch (Exception ex)
             {
@@ -284,7 +282,7 @@ namespace LRCounter.Controllers.Gameplay
                 {
                     LeftBestAccuracy = left / 100.0;   // 保存は%なので0〜1へ
                     RightBestAccuracy = right / 100.0;
-                    Plugin.Log.Info($"[LRCounter] HandBest baseline: L={left:F2}% R={right:F2}%");
+                    Plugin.DebugLog($"[LRCounter] HandBest baseline: L={left:F2}% R={right:F2}%");
                 }
             }
             catch (Exception ex)
@@ -304,7 +302,7 @@ namespace LRCounter.Controllers.Gameplay
             // custom_level_ プレフィックスがない = 公式譜面なのでスキップ
             if (!levelId.StartsWith("custom_level_", StringComparison.OrdinalIgnoreCase))
             {
-                Plugin.Log.Info($"[LRCounter] Not a custom level ({levelId}), skipping.");
+                Plugin.DebugLog($"[LRCounter] Not a custom level ({levelId}), skipping.");
                 return Task.FromResult(0.0);
             }
 
@@ -358,7 +356,7 @@ namespace LRCounter.Controllers.Gameplay
                 int currentDiff = ToScoreSaberDifficulty(currentKey.difficulty);
                 string currentMode = $"Solo{currentKey.beatmapCharacteristic.serializedName}";
 
-                Plugin.Log.Info($"[LRCounter] PlayerTotalPP={_playerDataCache.TotalPP:F2} (cached)");
+                Plugin.DebugLog($"[LRCounter] PlayerTotalPP={_playerDataCache.TotalPP:F2} (cached)");
 
                 var rankedScores = _playerDataCache.GetScoresSnapshot();
 
@@ -376,14 +374,14 @@ namespace LRCounter.Controllers.Gameplay
                     if (idx >= 0)
                     {
                         // 今プレイ中の曲の既存スコアはThreshold計算では新スコアに置き換わるので候補から外す。
-                        Plugin.Log.Info($"[LRCounter] Existing score for this map (pp={rankedScores[idx].pp:F2}) will be replaced");
+                        Plugin.DebugLog($"[LRCounter] Existing score for this map (pp={rankedScores[idx].pp:F2}) will be replaced");
                         others.RemoveAt(idx);
                     }
                 }
 
                 // 「このPP以上を出せばトータルが GainEpsilon 以上増える」最低ラインを計算
                 ThresholdPP = ScoreSaberApiService.CalculateThreshold(others, baseline, GainEpsilon);
-                Plugin.Log.Info($"[LRCounter] ThresholdPP={ThresholdPP:F2}");
+                Plugin.DebugLog($"[LRCounter] ThresholdPP={ThresholdPP:F2}");
 
                 // Threshold確定後に表示を更新させる
                 OnPPUpdated?.Invoke();
@@ -475,7 +473,7 @@ namespace LRCounter.Controllers.Gameplay
             if (energy > 0 || _penaltyApplied) return;
             _penaltyApplied = true;
             _scoreFactor = 0.5f;
-            Plugin.Log.Info("[LRCounter] No Fail: score factor set to 0.5 (score & max halved, accuracy unchanged).");
+            Plugin.DebugLog("[LRCounter] No Fail: score factor set to 0.5 (score & max halved, accuracy unchanged).");
             OnPPUpdated?.Invoke();
         }
     }

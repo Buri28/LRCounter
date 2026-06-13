@@ -20,7 +20,6 @@ namespace LRCounter.Installers
         public void Initialize()
         {
             GameplaySetup.Instance.AddTab("LRCounter", "LRCounter.Views.LRSettingsView.bsml", _settingsController);
-            Plugin.Log.Info("MODS tab registered.");
         }
 
         public void Dispose()

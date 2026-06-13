@@ -18,6 +18,10 @@ namespace LRCounter.Configuration
         // 開発用デバッグラベルを非表示にする（true=消す）
         public virtual bool HideDebugLabel { get; set; } = true;
 
+        // 詳細ログ出力フラグ。true のときだけ Debug レベルの診断ログを出す（既定OFF＝通常はWarn/Errorのみ）。
+        // Plugin.DebugLog() がこのフラグを参照する。LRCounter.json で切り替える。
+        public virtual bool DebugLogging { get; set; } = false;
+
         // テキストサイズ (CountersPlus 準拠の canvas 単位)
         public virtual float TextSize { get; set; } = 3f;
 

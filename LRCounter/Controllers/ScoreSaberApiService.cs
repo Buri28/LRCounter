@@ -80,7 +80,7 @@ namespace LRCounter.Controllers
                     Plugin.Log.Warn("[ScoreSaberApi] GetUserInfo returned no user id.");
                     return null;
                 }
-                Plugin.Log.Info($"[ScoreSaberApi] Platform={userInfo.platform} UserId={userInfo.platformUserId}");
+                Plugin.DebugLog($"[ScoreSaberApi] Platform={userInfo.platform} UserId={userInfo.platformUserId}");
                 return userInfo.platformUserId;
             }
             catch (Exception ex)
@@ -121,7 +121,7 @@ namespace LRCounter.Controllers
         {
             try
             {
-                Plugin.Log.Info($"[ScoreSaberApi] GET {url}");
+                Plugin.DebugLog($"[ScoreSaberApi] GET {url}");
                 string json = await Http.GetStringAsync(url);
 
                 var m = Regex.Match(json, pattern);
@@ -167,13 +167,13 @@ namespace LRCounter.Controllers
         {
             try
             {
-                Plugin.Log.Info($"[ScoreSaberApi] GET {url}");
+                Plugin.DebugLog($"[ScoreSaberApi] GET {url}");
                 using var response = await Http.GetAsync(url);
 
                 // 404 = リーダーボード未登録（アンランク）。正常ケースなのでInfoレベルで記録して0を返す
                 if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
-                    Plugin.Log.Info("[ScoreSaberApi] Leaderboard not found (unranked).");
+                    Plugin.DebugLog("[ScoreSaberApi] Leaderboard not found (unranked).");
                     return 0;
                 }
                 // レートリミット(429)やサーバーエラー等は失敗としてnullを返す（キャッシュさせない）
@@ -230,7 +230,7 @@ namespace LRCounter.Controllers
 
                 // PP降順でソート
                 scores.Sort((a, b) => b.pp.CompareTo(a.pp));
-                Plugin.Log.Info($"[ScoreSaberApi] Parsed {scores.Count} ranked scores.");
+                Plugin.DebugLog($"[ScoreSaberApi] Parsed {scores.Count} ranked scores.");
             }
             catch (Exception ex)
             {
@@ -247,7 +247,7 @@ namespace LRCounter.Controllers
             if (!_v2Unavailable)
             {
                 string url = $"https://scoresaber.com/api/v2/players/{playerId}/scores?sort=top&limit=100&page={page}";
-                Plugin.Log.Info($"[ScoreSaberApi] GET {url}");
+                Plugin.DebugLog($"[ScoreSaberApi] GET {url}");
                 string json = await SafeGetStringAsync(url);
                 if (!string.IsNullOrEmpty(json))
                 {
@@ -257,7 +257,7 @@ namespace LRCounter.Controllers
             }
 
             string v1Url = $"https://scoresaber.com/api/player/{playerId}/scores?sort=top&limit=100&page={page}";
-            Plugin.Log.Info($"[ScoreSaberApi] GET {v1Url}");
+            Plugin.DebugLog($"[ScoreSaberApi] GET {v1Url}");
             string v1Json = await SafeGetStringAsync(v1Url);
             if (string.IsNullOrEmpty(v1Json)) return -1;
 
@@ -304,7 +304,7 @@ namespace LRCounter.Controllers
             }
             catch (Exception ex)
             {
-                Plugin.Log.Info($"[ScoreSaberApi] page fetch skipped: {Describe(ex)}");
+                Plugin.DebugLog($"[ScoreSaberApi] page fetch skipped: {Describe(ex)}");
                 return "";
             }
         }

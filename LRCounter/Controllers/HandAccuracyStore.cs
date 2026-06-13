@@ -102,7 +102,7 @@ namespace LRCounter.Controllers
                     TryParse(parts[4], out rec.RightPP);
                     _records[parts[0]] = rec;
                 }
-                Plugin.Log.Info($"[LRCounter] HandAccuracyStore loaded: {_records.Count} records.");
+                Plugin.DebugLog($"[LRCounter] HandAccuracyStore loaded: {_records.Count} records.");
             }
             catch (Exception ex)
             {

@@ -290,7 +290,6 @@ namespace LRCounter.Controllers.Settings
             NotifyPropertyChanged(nameof(BorderColorScoreUpdate));
             NotifyPropertyChanged(nameof(BorderColorPP));
             NotifyPropertyChanged(nameof(BorderColorHandBest));
-            Plugin.Log.Info("Settings reset to defaults.");
         }
     }
 }
