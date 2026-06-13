@@ -56,7 +56,9 @@ namespace LRCounter.Controllers.Gameplay
         private const double WindowHeight = 10.0;            // 1窓あたりの精度幅(%)
         private const double MaxWindowLow = AccDisplayMax - WindowHeight; // 最上段の窓の下端(=90)
         private const int NotesStable = 5;                   // 切り替えに必要な「窓外維持」ノーツ数（手ごとに数える）
+        private const int InitialAdjustNotes = 5;            // 開始直後に1回だけ窓を初期調整する判定ノーツ数（左右合計）
         private double _windowLow;                           // 左右共通の窓の下端
+        private bool _initialWindowAdjusted;                 // 開始直後の初期調整を済ませたか（1回だけ）
         // 窓外（下端割れ/上端超え）を各手のノーツで連続カウント。窓内に戻る or 窓が動いたら0に戻す。
         private int _leftBelowCount;
         private int _rightBelowCount;
@@ -132,6 +134,24 @@ namespace LRCounter.Controllers.Gameplay
                 bool rightNew = rightNotes != _rightPrevNotes;
                 _leftPrevNotes = leftNotes;
                 _rightPrevNotes = rightNotes;
+
+                // 初回のみ：左右合わせて最初の InitialAdjustNotes ノーツ（ミス含む）を処理した時点で、
+                // 左右の高い方の精度が90%未満なら、その精度を含む10%帯から開始する（以降は通常スライドに任せる）。
+                if (!_initialWindowAdjusted && (leftNew || rightNew)
+                    && leftNotes + rightNotes >= InitialAdjustNotes)
+                {
+                    _initialWindowAdjusted = true;
+                    double higher = leftAcc > rightAcc ? leftAcc : rightAcc;
+                    if (higher < MaxWindowLow) // 90%未満のときだけ下げる（90%以上は最上段[90,100]のまま）
+                    {
+                        // 高い方の精度を含む10%帯の下端に合わせる（例: 62% → 60）。下限0。
+                        double low = System.Math.Floor(higher / WindowHeight) * WindowHeight;
+                        _windowLow = low < 0 ? 0 : low;
+                        ResetOutsideCounts();
+                        RefreshGridColors(_leftGridLines, _windowLow);
+                        RefreshGridColors(_rightGridLines, _windowLow);
+                    }
+                }
 
                 // その手にノーツが来たときだけ「窓外維持」カウントを更新する
                 if (leftNew) UpdateOutsideCount(leftAcc, ref _leftBelowCount, ref _leftAboveCount);
