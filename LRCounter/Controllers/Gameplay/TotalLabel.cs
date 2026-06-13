@@ -2,7 +2,7 @@ using LRCounter.Configuration;
 using TMPro;
 using UnityEngine;
 
-namespace LRCounter.Controllers.Display
+namespace LRCounter.Controllers.Gameplay
 {
     // 上段にPP（黄/緑）、下段に%（精度帯色）を中央上部に表示する。位置・サイズは設定で可変。
     internal class TotalLabel : IDisplayComponent

@@ -1,5 +1,5 @@
 using LRCounter.Configuration;
-using LRCounter.Controllers;
+using LRCounter.Controllers.Gameplay;
 using Zenject;
 
 namespace LRCounter.Installers

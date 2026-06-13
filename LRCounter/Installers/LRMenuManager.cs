@@ -1,5 +1,5 @@
 using BeatSaberMarkupLanguage.GameplaySetup;
-using LRCounter.Controllers;
+using LRCounter.Controllers.Settings;
 using System;
 using Zenject;
 

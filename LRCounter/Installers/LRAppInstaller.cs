@@ -1,5 +1,6 @@
 using LRCounter.Configuration;
 using LRCounter.Controllers;
+using LRCounter.Controllers.Results;
 using Zenject;
 
 namespace LRCounter.Installers

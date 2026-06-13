@@ -1,12 +1,11 @@
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.ViewControllers;
 using LRCounter.Configuration;
-using LRCounter.Controllers.Display;
 using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
 
-namespace LRCounter.Controllers
+namespace LRCounter.Controllers.Settings
 {
     /// <summary>
     /// ソロメニューのMODSタブに表示する設定画面のコントローラーです。

@@ -2,7 +2,7 @@ using LRCounter.Models;
 using TMPro;
 using UnityEngine;
 
-namespace LRCounter.Controllers.Display
+namespace LRCounter.Controllers.Gameplay
 {
     // 精度/PP/Star/カット内訳/集計検算/閾値を1か所にまとめて表示する開発用ラベル。
     internal class DebugLabel : IDisplayComponent
