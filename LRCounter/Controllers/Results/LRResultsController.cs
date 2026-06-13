@@ -135,17 +135,19 @@ namespace LRCounter.Controllers.Results
         // ランク外はPPを省略する。
         private string FormatHand(double accPercent, double pp, int cutNotes, int totalNotes, bool hasDelta, double deltaPercent)
         {
-            string ppPart = _store.HasStar ? $" ({pp:F1}pp)" : "";
-            string cutLine = $"{cutNotes} / {totalNotes}";
+            // PP表記 (xx.xpp) だけは斜体から除外する。ベースは通常フォントにしておき、
+            // 斜体にしたい部分（精度の数値・差分・ノーツ数）を個別に <i> で囲む（TMPに斜体解除タグが無いため）。
+            string ppPart = _store.HasStar ? $" (<i>{pp:F1}pp</i>)" : "";
+            string cutLine = $"<i>{cutNotes} / {totalNotes}</i>";
 
             string deltaLine;
             if (hasDelta)
             {
                 // 差分: プラス(同値含む)は緑 "+0.03%"、マイナスは赤 "-0.03%"。テキスト全体は手の色なので色タグで個別着色。
-                // フォントは基準より2pt小さく表示する。
+                // フォントは基準より2pt小さく表示する。差分も斜体にする。
                 string deltaBody = deltaPercent >= 0
-                    ? $"<color={LRDisplayCommon.ToHex(LRDisplayCommon.ColGreen)}>+{deltaPercent:F2}%</color>"
-                    : $"<color={LRDisplayCommon.ToHex(LRDisplayCommon.ColRed)}>{deltaPercent:F2}%</color>"; // 負号は数値に含まれる
+                    ? $"<i><color={LRDisplayCommon.ToHex(LRDisplayCommon.ColGreen)}>+{deltaPercent:F2}%</color></i>"
+                    : $"<i><color={LRDisplayCommon.ToHex(LRDisplayCommon.ColRed)}>{deltaPercent:F2}%</color></i>"; // 負号は数値に含まれる
                 // 精度行の (pp) 表記ぶんを透明文字で末尾に付け、差分の中心を「精度の数字」の中心へ合わせる
                 // （中央揃え＝左右対称は維持したまま、PP表記で右へずれる分を相殺）。直後に alpha を戻す。
                 // パディングは差分と同じ size 内に入れる：行の高さは最大グリフで決まるため、外に出すと
@@ -160,7 +162,8 @@ namespace LRCounter.Controllers.Results
             }
 
             // 精度→差分 だけ行間を詰める：精度行の line-height を縮め、直後に既定へ戻す（差分→カット数は通常のまま）。
-            return $"<line-height={AccToDeltaLineHeightPct}%>{accPercent:F2}%{ppPart}</line-height>\n{deltaLine}\n{cutLine}";
+            // 精度の数値だけ斜体にし、PP表記 (xx.xpp) は <i> の外＝通常フォントのままにする。
+            return $"<line-height={AccToDeltaLineHeightPct}%><i>{accPercent:F2}%</i>{ppPart}</line-height>\n{deltaLine}\n{cutLine}";
         }
     }
 }
