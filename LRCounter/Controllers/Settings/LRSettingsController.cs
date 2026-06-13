@@ -218,6 +218,13 @@ namespace LRCounter.Controllers.Settings
             set { _config.BorderColorPP = LRDisplayCommon.ToHex(value); _config.Changed(); }
         }
 
+        [UIValue("border-color-hand-best")]
+        public Color BorderColorHandBest
+        {
+            get => LRDisplayCommon.ParseHex(_config.BorderColorHandBest);
+            set { _config.BorderColorHandBest = LRDisplayCommon.ToHex(value); _config.Changed(); }
+        }
+
         // ———— Reset Button ————
         [UIAction("reset-settings")]
         public void ResetSettings()
@@ -253,6 +260,7 @@ namespace LRCounter.Controllers.Settings
             _config.Color10 = d.Color10;
             _config.BorderColorScoreUpdate = d.BorderColorScoreUpdate;
             _config.BorderColorPP = d.BorderColorPP;
+            _config.BorderColorHandBest = d.BorderColorHandBest;
             _config.Changed();
 
             NotifyPropertyChanged(nameof(Enabled));
@@ -281,6 +289,7 @@ namespace LRCounter.Controllers.Settings
             NotifyPropertyChanged(nameof(Color10));
             NotifyPropertyChanged(nameof(BorderColorScoreUpdate));
             NotifyPropertyChanged(nameof(BorderColorPP));
+            NotifyPropertyChanged(nameof(BorderColorHandBest));
             Plugin.Log.Info("Settings reset to defaults.");
         }
     }

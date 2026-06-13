@@ -60,11 +60,13 @@ namespace LRCounter.Configuration
         public virtual string Color10 { get; set; } = "#E6E6E6";
 
         // ─── 閾値の枠（ボーダー）の色 ───────────────────────────
-        // バー外周を縁取る枠の色。合算PPが各ラインを超えたときに点灯する。
-        //   BorderColorScoreUpdate … 自己ベストPP超え（スコア更新）
-        //   BorderColorPP          … 取得ライン(ThresholdPP)超え（PP取得）。スコア更新より優先。
+        // バー外周を縁取る枠の色。優先度: PP取得(白) ＞ 両手スコア更新(黄) ＞ 片手ベスト更新(橙)。
+        //   BorderColorPP          … 取得ライン(ThresholdPP)超え（PP取得）。最優先・両手同時。
+        //   BorderColorScoreUpdate … 両手(合算)の自己ベスト精度更新。両手同時。
+        //   BorderColorHandBest    … その手の自己ベスト精度更新。その手だけ点灯。最下位。
         public virtual string BorderColorScoreUpdate { get; set; } = "#ffff00";
         public virtual string BorderColorPP { get; set; } = "#ffffff";
+        public virtual string BorderColorHandBest { get; set; } = "#ff7f00";
 
         // Changed イベント（IPA が生成するストアのためのメソッド）
         public virtual void Changed() { }
