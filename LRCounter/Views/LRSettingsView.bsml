@@ -156,12 +156,19 @@
                     bind-value='true'
                     hover-hint='Border color when the total PP exceeds the PP acquisition line.' />
 
-    <!-- 自己ベスト超え(スコア更新)時の枠色 -->
+    <!-- 両手(合算)の自己ベスト精度更新時の枠色 -->
     <color-setting text='Score Update'
                     value='border-color-score-update'
                     apply-on-change='true'
                     bind-value='true'
-                    hover-hint='Border color when the total PP exceeds your self-best (score update).' />
+                    hover-hint='Border color when the combined (both hands) accuracy beats your self-best.' />
+
+    <!-- 片手の自己ベスト精度更新時の枠色（その手だけ点灯） -->
+    <color-setting text='Hand Best'
+                    value='border-color-hand-best'
+                    apply-on-change='true'
+                    bind-value='true'
+                    hover-hint='Border color when a single hand beats its own self-best accuracy (lights that hand only).' />
 
     <!-- 全設定を既定値に戻す -->
     <button text='Reset All Settings'
