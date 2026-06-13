@@ -1,5 +1,3 @@
-using System;
-
 namespace LRCounter.Models
 {
     // 片手（左または右）のスコアと精度をリアルタイムで追跡するクラス
@@ -28,19 +26,6 @@ namespace LRCounter.Models
         public double PP          { get; private set; } = 0;   // 現在の精度から推定されるPP（StarRatingが0なら0）
         public int    LastCutScore { get; private set; } = -1;  // 直前のカット生スコア（0〜115）、未カット時は-1
 
-        private int _rawCutSum = 0;    // 115満点ノーツの生スコア(0〜115)の累計（平均算出用、倍率を含めない）
-        private int _fullCutNotes = 0; // 115満点ノーツのグッドカット数（平均の分母・内側バーの表示判定）
-
-        // 内側バー(平均点数)の対象になる115満点グッドカットの数。
-        // チェーン(最大85/20)は110〜115表示の意味が壊れるため数えない。CutNotesとは別物。
-        public int FullCutNotes => _fullCutNotes;
-
-        // 115満点グッドカット1回あたりの平均生スコア（0〜115）。対象がまだ無いときは0
-        // 計算式: 生スコア合計 / 115満点グッドカット数。精度(Accuracy)と違いミスは分母に含めない
-        public double AverageCutScore => _fullCutNotes > 0
-            ? (double)_rawCutSum / _fullCutNotes
-            : 0;
-
         private double _starRating = 0; // PP計算に使うStar評価（LRTrackerServiceからセットされる）
 
         public HandPPTracker(HandType hand)
@@ -66,13 +51,9 @@ namespace LRCounter.Models
             MaxPossibleScore += maxCutScore * idealMult;
             CutNotes++;
             TotalNotes++;
-            // 平均点数バーは115満点ノーツのみ対象（チェーンを混ぜると110〜115表示が壊れる）
+            // LastCutScore（デバッグ表示用）は115満点ノーツのみ記録する（チェーンは生スコアの意味が異なるため）
             if (maxCutScore == PPCalculator.MaxNoteScore)
-            {
                 LastCutScore = score;
-                _rawCutSum  += score;
-                _fullCutNotes++;
-            }
             RecalculatePP();
         }
 
@@ -112,8 +93,6 @@ namespace LRCounter.Models
             MissedNotes      = 0;
             BadCuts          = 0;
             PP               = 0;
-            _rawCutSum       = 0;
-            _fullCutNotes    = 0;
         }
 
         // 現在のAccuracyとStarRatingからPPを再計算する
