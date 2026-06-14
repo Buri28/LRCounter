@@ -59,6 +59,19 @@ namespace LRCounter.Controllers.Gameplay
         // 失敗時点で削るのではなく、成立後に全体へ係数を掛けて再現する。通常1.0、NF失敗後0.5。
         private float _scoreFactor = 1f;
 
+        // NF失敗による減点係数（1.0=通常／0.5=失敗後）。自己ベスト判定（黄/橙ボーダー・左右ベスト保存）は
+        // 精度同士で比較するが、失敗時は提出スコアが半減して実際にはベスト更新にならないため、
+        // 「精度×この係数」を実効精度として比較・保存することで挙動を揃える。
+        public double ScoreFactor => _scoreFactor;
+        // NF失敗したか（PP取得＝白ボーダーは失敗プレイでは成立しないので消灯させる判定に使う）。
+        public bool Failed => _penaltyApplied;
+
+        // ゲーム画面に表示するPP。NF失敗時は提出スコア半減を反映し、実効精度（精度×係数）から再計算する。
+        // 通常クリア（係数1.0）は LeftTracker.PP / RightTracker.PP / TotalPP と同値。
+        public double LeftDisplayPP => PPCalculator.CalculatePP(LeftTracker.Accuracy * _scoreFactor, StarRating);
+        public double RightDisplayPP => PPCalculator.CalculatePP(RightTracker.Accuracy * _scoreFactor, StarRating);
+        public double TotalDisplayPP => PPCalculator.CalculatePP(TotalAccuracy * _scoreFactor, StarRating);
+
         // 両手合算スコア（倍率込み）。NF失敗時は係数0.5で全体を半減（最大も半減するので精度は不変）。
         public int TotalScore => (int)(_totalScore * _scoreFactor);
         public int TotalMaxScore => (int)(_maxTotalScore * _scoreFactor);
@@ -144,12 +157,17 @@ namespace LRCounter.Controllers.Gameplay
             // 左右ベスト精度との差分を求める（フルクリア時のみ。Set前に求めて結果ストアへ渡す）。
             (bool hasDelta, double leftDelta, double rightDelta) = UpdateAndDiffHandBests();
 
-            // 曲終了時点の左右の平均精度・PPをリザルト画面用に保存する
+            // 曲終了時点の左右の平均精度・PPをリザルト画面用に保存する。
+            // NF失敗時は提出スコアが半減するので、リザルト表示の精度・PPとも実効値（精度×係数）にする。
+            // PPは精度の関数なので、実効精度から再計算する（通常クリアは係数1.0＝従来と同値）。
+            // （差分も UpdateAndDiffHandBests で同じ実効精度を使って計算済み＝表示と差分が一致する）
+            double leftEffAcc = LeftTracker.Accuracy * _scoreFactor;
+            double rightEffAcc = RightTracker.Accuracy * _scoreFactor;
             _resultStore.Set(
-                LeftTracker.Accuracy * 100.0,
-                RightTracker.Accuracy * 100.0,
-                LeftTracker.PP,
-                RightTracker.PP,
+                leftEffAcc * 100.0,
+                rightEffAcc * 100.0,
+                PPCalculator.CalculatePP(leftEffAcc, StarRating),
+                PPCalculator.CalculatePP(rightEffAcc, StarRating),
                 StarRating > 0,
                 LeftTracker.CutNotes,
                 LeftTracker.TotalNotes,
@@ -214,8 +232,11 @@ namespace LRCounter.Controllers.Gameplay
                 if (fullMaxScore <= 0 || _maxTotalScore < fullMaxScore) return (false, 0, 0); // フルクリアのみ
 
                 string key = BuildMapKey();
-                double curLeft = LeftTracker.Accuracy * 100.0;
-                double curRight = RightTracker.Accuracy * 100.0;
+                // NF失敗時は提出スコアが半減するので、自己ベスト判定・保存も実効精度（精度×係数）で行う。
+                // 通常クリアは係数1.0で従来どおり。失敗プレイは半分の値になるため、既存ベスト(=通常クリア)を
+                // 上書きしにくくなり、誤って「ベスト更新」と記録されるのを防ぐ。
+                double curLeft = LeftTracker.Accuracy * 100.0 * _scoreFactor;
+                double curRight = RightTracker.Accuracy * 100.0 * _scoreFactor;
 
                 // 差分は「更新前のベスト」と比較するので、更新前に読み出す。
                 bool had = _handAccuracyStore.TryGet(key, out double oldLeft, out double oldRight);
