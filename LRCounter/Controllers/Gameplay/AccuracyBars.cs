@@ -52,13 +52,16 @@ namespace LRCounter.Controllers.Gameplay
         // 精度バーが表示する精度の範囲(%)。下端=low、上端=low+幅 にマッピングする。
         private const double AccDisplayMax = 100.0;
 
-        // ─── 動的レンジ（隣接する10%窓を上下にスライド・左右共通） ───────────────────────
+        // ─── 動的レンジ（窓を上下にスライド・左右共通） ───────────────────────
         // 左右のバーは同じ窓[low, low+幅]を共有する。切り替え条件は次のとおり（チラつき防止）。
         // ・下へ: 両手とも下端を割り、後から割った方も含め両手がそれぞれ NotesStable ノーツ維持したら1段下へ。
         // ・上へ: 両手とも上端を超え、後から超えた方も含め両手がそれぞれ NotesStable ノーツ維持したら1段上へ。
         // ・下限は0%まで下がる。動的レンジOFF(_config.AccBarDynamic=false)時は [AccBarMin,100] 固定。
-        private const double WindowHeight = 10.0;            // 1窓あたりの精度幅(%)
-        private const double MaxWindowLow = AccDisplayMax - WindowHeight; // 最上段の窓の下端(=90)
+        // 窓の幅(=スライドの段差)はバー下限 AccBarMin で決まる: 90→10%, 80→20%, 50→50%, 0→100%。
+        //   例) 80% は [80,100]→[60,80]→[40,60]→[20,40]→[0,20] と 20% 刻みでスライド。
+        //       50% は [50,100]→[0,50] と 50% 刻みでスライド。
+        private double WindowHeight => AccDisplayMax - _config.AccBarMin;  // 1窓あたりの精度幅(%)
+        private double MaxWindowLow => _config.AccBarMin;                  // 最上段の窓の下端(=AccBarMin)
         private const int NotesStable = 5;                   // 切り替えに必要な「窓外維持」ノーツ数（手ごとに数える）
         private const int InitialAdjustNotes = 5;            // 開始直後に1回だけ窓を初期調整する判定ノーツ数（左右合計）
         private double _windowLow;                           // 左右共通の窓の下端
@@ -72,8 +75,8 @@ namespace LRCounter.Controllers.Gameplay
         private int _leftPrevNotes;
         private int _rightPrevNotes;
 
-        // 窓に表示する精度幅。動的=10%固定 / 静的=AccBarMin〜100。
-        private double WindowSpan => _config.AccBarDynamic ? WindowHeight : (AccDisplayMax - _config.AccBarMin);
+        // 窓に表示する精度幅。動的・静的とも AccBarMin〜100（動的はこの幅の窓がスライドする）。
+        private double WindowSpan => AccDisplayMax - _config.AccBarMin;
 
         // 目盛り：10%刻みで10分割（線は9本）
         private const int GridDivisions = 10;
@@ -94,8 +97,8 @@ namespace LRCounter.Controllers.Gameplay
             _leftColor = leftColor;
             _rightColor = rightColor;
 
-            // 初期の窓: 動的なら最上段[90,100]、静的なら[AccBarMin,100]。
-            _windowLow = config.AccBarDynamic ? MaxWindowLow : config.AccBarMin;
+            // 初期の窓は最上段[AccBarMin,100]。動的ならここから下へスライドしうる。
+            _windowLow = config.AccBarMin;
         }
 
         public void Build(RectTransform canvasRT, int layer)
@@ -151,9 +154,9 @@ namespace LRCounter.Controllers.Gameplay
                 {
                     _initialWindowAdjusted = true;
                     double higher = leftAcc > rightAcc ? leftAcc : rightAcc;
-                    if (higher < MaxWindowLow) // 90%未満のときだけ下げる（90%以上は最上段[90,100]のまま）
+                    if (higher < MaxWindowLow) // 最上段の窓未満のときだけ下げる（それ以上は最上段[AccBarMin,100]のまま）
                     {
-                        // 高い方の精度を含む10%帯の下端に合わせる（例: 62% → 60）。下限0。
+                        // 高い方の精度を含む窓の下端に合わせる（例: 幅10%なら 62%→60）。下限0。
                         double low = System.Math.Floor(higher / WindowHeight) * WindowHeight;
                         _windowLow = low < 0 ? 0 : low;
                         ResetOutsideCounts();
@@ -487,7 +490,7 @@ namespace LRCounter.Controllers.Gameplay
                 ResetOutsideCounts();
                 return true;
             }
-            // 上へ: 両手とも上端超えを規定ノーツ維持。上限は最上段[90,100]。
+            // 上へ: 両手とも上端超えを規定ノーツ維持。上限は最上段[AccBarMin,100]。
             if (_windowLow < MaxWindowLow && _leftAboveCount >= NotesStable && _rightAboveCount >= NotesStable)
             {
                 _windowLow += WindowHeight;
