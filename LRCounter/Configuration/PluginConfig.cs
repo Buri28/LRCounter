@@ -35,13 +35,13 @@ namespace LRCounter.Configuration
         public virtual float AccBarY { get; set; } = 0.33f;       // バー下端のY
         public virtual float AccBarHeight { get; set; } = 0.50f;  // バーの高さ
         public virtual float AccBarWidth { get; set; } = 0.01f;   // バーの幅
-        public virtual int AccBarMin { get; set; } = 90;          // バー下端にマッピングする精度(%)。選択肢: 90/80/50/0（動的レンジOFF時のみ有効）
-        public virtual bool AccBarDynamic { get; set; } = true;   // 動的レンジ: 10%幅の窓を精度に追従して上下スライドする（true=ON）
+        public virtual int AccBarMin { get; set; } = 90;          // バー下端にマッピングする精度(%)。選択肢: 90/80/50/0。動的レンジON時は窓幅=(100-この値)になり、その幅でスライドする
+        public virtual bool AccBarDynamic { get; set; } = true;   // 動的レンジ: 幅(100-AccBarMin)%の窓を精度に追従して上下スライドする（true=ON）
 
         // ─── 合算ラベル（左右合計の精度・PPを中央上部に表示） ───────────────
         public virtual bool ShowTotalLabel { get; set; } = true; // 表示ON/OFF
         public virtual float TotalLabelX { get; set; } = 0.5f;   // 中心X（Canvas幅比）
-        public virtual float TotalLabelY { get; set; } = 0.80f;  // 下端Y（Canvas高さ比）大きいほど上
+        public virtual float TotalLabelY { get; set; } = 0.85f;  // 下端Y（Canvas高さ比）大きいほど上
         public virtual float TotalLabelSize { get; set; } = 4.0f;  // フォントサイズ
 
         // ─── 11段階の精度バー色 ───────────────────────────
