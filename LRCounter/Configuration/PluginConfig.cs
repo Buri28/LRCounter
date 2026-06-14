@@ -41,7 +41,7 @@ namespace LRCounter.Configuration
         // ─── 合算ラベル（左右合計の精度・PPを中央上部に表示） ───────────────
         public virtual bool ShowTotalLabel { get; set; } = true; // 表示ON/OFF
         public virtual float TotalLabelX { get; set; } = 0.5f;   // 中心X（Canvas幅比）
-        public virtual float TotalLabelY { get; set; } = 0.90f;  // 下端Y（Canvas高さ比）大きいほど上
+        public virtual float TotalLabelY { get; set; } = 0.80f;  // 下端Y（Canvas高さ比）大きいほど上
         public virtual float TotalLabelSize { get; set; } = 4.0f;  // フォントサイズ
 
         // ─── 11段階の精度バー色 ───────────────────────────

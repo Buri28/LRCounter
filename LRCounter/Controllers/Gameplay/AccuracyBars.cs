@@ -21,7 +21,9 @@ namespace LRCounter.Controllers.Gameplay
         private Image[]? _leftBorder;   // 閾値の枠（左/右/上/下の4帯）
         private TMP_Text? _leftLabel;
         private TMP_Text? _leftPPLabel;
-        private Image? _leftTargetLine;
+        private Image? _leftPPLine;        // PP取得ライン（必要精度・両手共通）
+        private Image? _leftSelfBestLine;  // 両手自己ベストの精度
+        private Image? _leftHandBestLine;  // この手の自己ベストの精度
         private double _prevLeftAcc;
 
         // 右バー
@@ -30,7 +32,9 @@ namespace LRCounter.Controllers.Gameplay
         private Image[]? _rightBorder;  // 閾値の枠（左/右/上/下の4帯）
         private TMP_Text? _rightLabel;
         private TMP_Text? _rightPPLabel;
-        private Image? _rightTargetLine;
+        private Image? _rightPPLine;        // PP取得ライン（必要精度・両手共通）
+        private Image? _rightSelfBestLine;  // 両手自己ベストの精度
+        private Image? _rightHandBestLine;  // この手の自己ベストの精度
         private double _prevRightAcc;
 
         // フラッシュ終了時刻（Time.time基準、-1は非アクティブ）
@@ -78,9 +82,8 @@ namespace LRCounter.Controllers.Gameplay
         private readonly Image?[] _rightGridLines = new Image?[GridDivisions - 1];
         private static readonly Color GridLineColorBold = new Color(0f, 0f, 0f, 1f); // 95%強調線（不透明黒）
 
-        // 目標ライン（必要精度）
-        private const float TargetLineHalfHeight = 0.18f;
-        private static readonly Color TargetLineColor = new Color(1f, 1f, 1f, 0.95f);
+        // 基準ライン（PP取得・両手自己ベスト・片手ベスト）の太さ
+        private const float ReferenceLineHalfHeight = 0.18f;
 
         private const float BarLabelHeight = 0.05f; // %ラベルの高さ（バー上端からこのぶん上）
 
@@ -100,9 +103,15 @@ namespace LRCounter.Controllers.Gameplay
             (_leftFill, _leftFlashOverlay, _leftLabel, _leftPPLabel) = CreateSideBar(canvasRT, layer, isLeft: true);
             (_rightFill, _rightFlashOverlay, _rightLabel, _rightPPLabel) = CreateSideBar(canvasRT, layer, isLeft: false);
 
-            // 目標ライン（必要精度）を各バー（bg）上に作る。位置は Update で毎回更新。
-            _leftTargetLine = CreateTargetLine((RectTransform)_leftFill!.transform.parent, layer);
-            _rightTargetLine = CreateTargetLine((RectTransform)_rightFill!.transform.parent, layer);
+            // 基準ライン（PP取得・両手自己ベスト・片手ベスト）を各バー（bg）上に作る。位置・色は Update で毎回更新。
+            var leftBarRT = (RectTransform)_leftFill!.transform.parent;
+            var rightBarRT = (RectTransform)_rightFill!.transform.parent;
+            _leftPPLine = CreateReferenceLine(leftBarRT, layer, "PP");
+            _leftSelfBestLine = CreateReferenceLine(leftBarRT, layer, "SelfBest");
+            _leftHandBestLine = CreateReferenceLine(leftBarRT, layer, "HandBest");
+            _rightPPLine = CreateReferenceLine(rightBarRT, layer, "PP");
+            _rightSelfBestLine = CreateReferenceLine(rightBarRT, layer, "SelfBest");
+            _rightHandBestLine = CreateReferenceLine(rightBarRT, layer, "HandBest");
 
             // 閾値の枠（バー外周）。塗り・フラッシュより後に作り、バーの外側に配置する。
             _leftBorder = CreateBorder(canvasRT, layer, isLeft: true);
@@ -187,7 +196,7 @@ namespace LRCounter.Controllers.Gameplay
             _leftPPLabel!.color = ppColor;
             _rightPPLabel!.color = ppColor;
 
-            UpdateTargetLine();
+            UpdateReferenceLines();
 
             // 閾値の枠：左右それぞれ独立に判定する。白=PP取得(合算・両手同時)を最優先、
             // 次に黄=その手が自分の自己ベスト精度を更新（片手ごと・点灯はその手だけ）。
@@ -387,20 +396,20 @@ namespace LRCounter.Controllers.Gameplay
             return img;
         }
 
-        // 目標ライン(必要精度)を1本生成する。位置は Update で更新。初期は非表示。
-        private Image CreateTargetLine(RectTransform barRT, int layer)
+        // 基準ライン(横線)を1本生成する。位置・色は Update で更新。初期は非表示。
+        private Image CreateReferenceLine(RectTransform barRT, int layer, string name)
         {
-            var go = new GameObject("LRTargetLine");
+            var go = new GameObject($"LRRefLine_{name}");
             go.layer = layer;
             var rt = go.AddComponent<RectTransform>();
             rt.SetParent(barRT, false);
             rt.anchorMin = new Vector2(0f, 0f);
             rt.anchorMax = new Vector2(1f, 0f);
-            rt.offsetMin = new Vector2(0f, -TargetLineHalfHeight);
-            rt.offsetMax = new Vector2(0f, TargetLineHalfHeight);
+            rt.offsetMin = new Vector2(0f, -ReferenceLineHalfHeight);
+            rt.offsetMax = new Vector2(0f, ReferenceLineHalfHeight);
             var img = go.AddComponent<Image>();
             img.sprite = LRDisplayCommon.CreateWhiteSprite();
-            img.color = TargetLineColor;
+            img.color = Color.clear;
             LRDisplayCommon.ApplyNoGlow(img);
             go.SetActive(false);
             return img;
@@ -408,27 +417,44 @@ namespace LRCounter.Controllers.Gameplay
 
         // ─── 更新ヘルパー ──────────────────────────────────────────────────────────
 
-        // ThresholdPP を必要精度に逆算して目標ラインの位置を更新する。
-        private void UpdateTargetLine()
+        // 3本の基準ラインの位置・色・表示を更新する。
+        //   PP取得ライン   : ThresholdPP を逆算した必要精度（両手共通）。BorderColorPP。
+        //   両手自己ベスト : 合算の自己ベスト精度（両手共通）。BorderColorScoreUpdate。
+        //   片手ベスト     : その手の自己ベスト精度（左右で別の値）。BorderColorHandBest。
+        private void UpdateReferenceLines()
         {
+            // PP取得ライン（必要精度）。ランク譜面かつ Threshold 確定時のみ。
             double threshold = _tracker.ThresholdPP;
             double star = _tracker.StarRating;
-            bool show = star > 0 && threshold > 0;
+            bool showPP = star > 0 && threshold > 0;
+            double ppAccPct = showPP ? PPCalculator.AccuracyForPP(threshold, star) * 100.0 : 0;
+            Color ppColor = LRDisplayCommon.ParseHex(_config.BorderColorPP);
+            UpdateReferenceLine(_leftPPLine, showPP, ppAccPct, ppColor);
+            UpdateReferenceLine(_rightPPLine, showPP, ppAccPct, ppColor);
 
-            if (_leftTargetLine != null) _leftTargetLine.gameObject.SetActive(show);
-            if (_rightTargetLine != null) _rightTargetLine.gameObject.SetActive(show);
-            if (!show) return;
+            // 両手自己ベスト（合算精度。左右とも同じ値）。記録なし(0)は非表示。
+            bool showSelf = _tracker.SelfBestAccuracy > 0;
+            double selfAccPct = _tracker.SelfBestAccuracy * 100.0;
+            Color selfColor = LRDisplayCommon.ParseHex(_config.BorderColorScoreUpdate);
+            UpdateReferenceLine(_leftSelfBestLine, showSelf, selfAccPct, selfColor);
+            UpdateReferenceLine(_rightSelfBestLine, showSelf, selfAccPct, selfColor);
 
-            double reqAccPct = PPCalculator.AccuracyForPP(threshold, star) * 100.0;
-            // 目標ラインも共通の窓に合わせて配置する
-            float frac = AccToFill(reqAccPct, _windowLow);
-            SetTargetLineFrac(_leftTargetLine, frac);
-            SetTargetLineFrac(_rightTargetLine, frac);
+            // 片手ベスト（その手の自己ベスト精度。左右で別の値）。記録なし(0)は非表示。
+            Color handColor = LRDisplayCommon.ParseHex(_config.BorderColorHandBest);
+            UpdateReferenceLine(_leftHandBestLine, _tracker.LeftBestAccuracy > 0,
+                _tracker.LeftBestAccuracy * 100.0, handColor);
+            UpdateReferenceLine(_rightHandBestLine, _tracker.RightBestAccuracy > 0,
+                _tracker.RightBestAccuracy * 100.0, handColor);
         }
 
-        private static void SetTargetLineFrac(Image? line, float frac)
+        // 基準ライン1本の表示ON/OFF・色・位置（共通の窓に合わせる）を設定する。
+        private void UpdateReferenceLine(Image? line, bool show, double accPct, Color color)
         {
             if (line == null) return;
+            line.gameObject.SetActive(show);
+            if (!show) return;
+            line.color = color;
+            float frac = AccToFill(accPct, _windowLow);
             var rt = (RectTransform)line.transform;
             rt.anchorMin = new Vector2(0f, frac);
             rt.anchorMax = new Vector2(1f, frac);
@@ -490,14 +516,12 @@ namespace LRCounter.Controllers.Gameplay
             }
         }
 
-        // 目盛り線の色を精度(%)ごとに決める。95%=黒で強調 / 98%=オレンジ / 99%=赤 / それ以外=通常
+        // 目盛り線の色を精度(%)ごとに決める。95%=黒で強調 / それ以外=通常
         private static Color GridLineColorFor(int pct)
         {
             switch (pct)
             {
                 case 95: return GridLineColorBold;
-                case 98: return LRDisplayCommon.ColOrange;
-                case 99: return LRDisplayCommon.ColRed;
                 default: return LRDisplayCommon.GridLineColor;
             }
         }
