@@ -60,7 +60,7 @@ namespace LRCounter.Controllers.Gameplay
             if (hasStar)
             {
                 string ppHex = ColorUtility.ToHtmlStringRGB(LRDisplayCommon.PPColor(_tracker));
-                _label.text = $"<color=#{ppHex}>{_tracker.TotalPP:F1}PP</color>\n{accLine}";
+                _label.text = $"<color=#{ppHex}>{_tracker.TotalDisplayPP:F1}PP</color>\n{accLine}";
             }
             else
             {

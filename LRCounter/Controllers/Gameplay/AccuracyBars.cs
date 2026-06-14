@@ -194,8 +194,8 @@ namespace LRCounter.Controllers.Gameplay
             // PPラベル（色は精度と分離：通常黄／threshold超過で緑）。アンランクなら非表示。
             bool hasStar = _tracker.StarRating > 0;
             Color ppColor = LRDisplayCommon.PPColor(_tracker);
-            _leftPPLabel!.text = hasStar ? $"{_tracker.LeftTracker.PP:F1}PP" : "";
-            _rightPPLabel!.text = hasStar ? $"{_tracker.RightTracker.PP:F1}PP" : "";
+            _leftPPLabel!.text = hasStar ? $"{_tracker.LeftDisplayPP:F1}PP" : "";
+            _rightPPLabel!.text = hasStar ? $"{_tracker.RightDisplayPP:F1}PP" : "";
             _leftPPLabel!.color = ppColor;
             _rightPPLabel!.color = ppColor;
 
@@ -535,6 +535,10 @@ namespace LRCounter.Controllers.Gameplay
         //   handBestAccuracy : その手の前回までの自己ベスト精度(0〜1)。記録なしは0。
         private Color BorderColorForHand(double handAccuracy, double handBestAccuracy)
         {
+            // NF失敗プレイは提出スコアが半減し、白(PP取得)・黄(両手ベスト)・橙(片手ベスト)いずれも
+            // 実際にはベスト更新／PP獲得にならない。どのラインを超えても枠は点灯させない。
+            if (_tracker.Failed) return Color.clear;
+
             // PP取得（白・最優先）：白いライン(ThresholdPP)を合算TotalPPで超えたか。PPは合算の概念なので両手同時。
             // ランク譜面のみ（アンランクはPP概念が無い）。Threshold未取得(0)のうちは判定しない。
             if (_tracker.StarRating > 0 && _tracker.ThresholdPP > 0 && _tracker.TotalPP >= _tracker.ThresholdPP)

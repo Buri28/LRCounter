@@ -92,8 +92,10 @@ namespace LRCounter.Controllers
 
         // PPラベルの色：通常は黄、threshold(底上げライン)を超えたら緑。
         // threshold未確定(0)やアンランクのときは黄のまま。
+        // NF失敗プレイは提出スコアが半減してPPを獲得できないので赤で示す。
         public static Color PPColor(LRTrackerService tracker)
         {
+            if (tracker.Failed) return ColRed;
             bool exceeded = tracker.StarRating > 0
                 && tracker.ThresholdPP > 0
                 && tracker.TotalPP >= tracker.ThresholdPP;
