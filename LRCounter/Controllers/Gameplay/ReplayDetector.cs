@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Zenject;
 
 namespace LRCounter.Controllers.Gameplay
@@ -36,14 +37,16 @@ namespace LRCounter.Controllers.Gameplay
         public static bool ShouldSkip(Ownership o) => o == Ownership.Foreign || o == Ownership.Unknown;
 
         // 現在の再生状態と所有者を判定する。BeatLeader→ScoreSaberの順に見て、再生中のものを採用する。
-        public static Ownership GetOwnership()
+        // scoreSaberLocalName: ScoreSaberのローカル表示名（自前APIで取得した名前）。ScoreSaberの所有者判定に使う。
+        //   ScoreSaberの PlayerService は別コンテナにあり App 静的からは解決できないため、外から渡す。
+        public static Ownership GetOwnership(string? scoreSaberLocalName = null)
         {
             try
             {
                 var bl = BeatLeaderOwnership();
                 if (bl != Ownership.NotReplay) return bl;
 
-                var ss = ScoreSaberOwnership();
+                var ss = ScoreSaberOwnership(scoreSaberLocalName);
                 if (ss != Ownership.NotReplay) return ss;
             }
             catch { /* 検出失敗は通常プレイ扱い */ }
@@ -86,7 +89,7 @@ namespace LRCounter.Controllers.Gameplay
         // LocalPlayerInfo.playerName を比較して、所有者が自分か他人かを判定する。
         // どちらかが null なら Unknown（安全側＝記録しない）。
         // どちらも一致すれば Own、異なれば Foreign
-        private static Ownership ScoreSaberOwnership()
+        private static Ownership ScoreSaberOwnership(string? localNameOverride)
         {
             var replayState = GetStatic("ScoreSaber.Plugin", "ReplayState");
             if (replayState == null) return Ownership.NotReplay; // ScoreSaber未導入 or 状態未生成
@@ -95,7 +98,8 @@ namespace LRCounter.Controllers.Gameplay
                 return Ownership.NotReplay;
 
             string? replayName = GetMember(replayState, "CurrentPlayerName") as string;
-            string? localName = GetScoreSaberLocalName();
+            // ローカル名は外から渡された自前API取得名を優先。無ければScoreSaber内部からの取得を試みる（通常は別コンテナで失敗）。
+            string? localName = !string.IsNullOrWhiteSpace(localNameOverride) ? localNameOverride : GetScoreSaberLocalName();
 
             var result = Compare(replayName, localName);
             Plugin.DebugLog($"[LRCounter] ScoreSaber replay detected: replayName='{replayName}' localName='{localName}' -> {result}");
@@ -110,11 +114,25 @@ namespace LRCounter.Controllers.Gameplay
         {
             try
             {
-                var lpiType = FindType("ScoreSaber.Core.Data.LocalPlayerInfo");
-                if (lpiType == null) return null;
                 if (!(GetStatic("ScoreSaber.Plugin", "Container") is DiContainer container)) return null;
 
-                object? lpi = container.TryResolve(lpiType); // 未バインドなら null（例外を投げない）
+                // LocalPlayerInfo は単独でDIバインドされておらず、PlayerService.localPlayerInfo が保持する。
+                // そのため Container から PlayerService を解決し、その中の localPlayerInfo.playerName を読む。
+                object? lpi = null;
+                var psType = FindType("ScoreSaber.Core.Services.PlayerService");
+                if (psType != null)
+                {
+                    object? ps = container.TryResolve(psType);
+                    lpi = GetMember(ps, "localPlayerInfo", "LocalPlayerInfo");
+                }
+
+                // フォールバック：将来 LocalPlayerInfo が直接バインドされている版に備える。
+                if (lpi == null)
+                {
+                    var lpiType = FindType("ScoreSaber.Core.Data.LocalPlayerInfo");
+                    if (lpiType != null) lpi = container.TryResolve(lpiType);
+                }
+
                 return GetMember(lpi, "playerName", "PlayerName") as string;
             }
             catch { return null; }
@@ -122,14 +140,21 @@ namespace LRCounter.Controllers.Gameplay
 
         // ─── 比較 ────────────────────────────────────────────────────────────────────
         // どちらか欠けていれば Unknown（特定不能＝安全側）。一致で Own、不一致で Foreign。
-        // null/空白文字列は無視して比較する。
-        // 文字列の前後空白は無視して比較する。大文字小文字は区別しない。
+        // ScoreSaberの色付き名（<color=...>Name</color> 等のリッチテキスト）を除去・前後空白を詰めて比較する。
+        // これにより、自分が色付き名でも「素の名前」同士で一致判定できる。大文字小文字は区別しない。
         private static Ownership Compare(string? replayOwner, string? localOwner)
         {
-            if (string.IsNullOrWhiteSpace(replayOwner) || string.IsNullOrWhiteSpace(localOwner))
-                return Ownership.Unknown;
-            return string.Equals(replayOwner!.Trim(), localOwner!.Trim(), StringComparison.OrdinalIgnoreCase)
-                ? Ownership.Own : Ownership.Foreign;
+            string a = NormalizeName(replayOwner);
+            string b = NormalizeName(localOwner);
+            if (a.Length == 0 || b.Length == 0) return Ownership.Unknown;
+            return string.Equals(a, b, StringComparison.OrdinalIgnoreCase) ? Ownership.Own : Ownership.Foreign;
+        }
+
+        // リッチテキストタグ(<...>)を除去し前後空白を詰める。色付き名でも素の名前で比較するための正規化。
+        private static string NormalizeName(string? s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return "";
+            return Regex.Replace(s, "<[^>]+>", "").Trim();
         }
 
         // ─── リフレクション補助 ──────────────────────────────────────────────────────

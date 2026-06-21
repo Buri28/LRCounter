@@ -33,6 +33,9 @@ namespace LRCounter.Controllers
         // ScoreSaberに登録されているプレイヤーの合計PP（クリア後はローカル更新で増分を反映）
         public double TotalPP { get; private set; }
 
+        // ScoreSaberプロフィールの表示名（リプレイ所有者判定のローカル名）。未取得は null。
+        public string? PlayerName { get; private set; }
+
         // Star評価のキャッシュ。アンランク(0)もキャッシュしてリトライ時の再取得を防ぐ。
         private readonly Dictionary<(string hash, int difficulty, string gameMode), double> _starCache
             = new Dictionary<(string, int, string), double>();
@@ -76,8 +79,10 @@ namespace LRCounter.Controllers
                     return false;
                 }
 
-                // バーストを避けるため並列ではなく直列で取得する（起動時の1回だけなので遅くても問題ない）
-                double? totalPP = await _apiService.GetPlayerTotalPPAsync(_playerId!);
+                // バーストを避けるため並列ではなく直列で取得する（起動時の1回だけなので遅くても問題ない）。
+                // 合計PPと表示名は同じ /players/{id} 応答なので1回でまとめて取得する。
+                // 表示名はリプレイ所有者判定（自分/他人）のローカル名に使う。
+                var (totalPP, name) = await _apiService.GetPlayerProfileAsync(_playerId!);
                 if (totalPP == null)
                 {
                     Plugin.Log.Warn("[LRCounter] PlayerDataCache: failed to fetch total PP; will retry next map.");
@@ -87,8 +92,9 @@ namespace LRCounter.Controllers
                 var scores = await _apiService.GetTopScoresAsync(_playerId!, ScorePagesToFetch);
 
                 TotalPP = totalPP.Value;
+                PlayerName = name;
                 _scores = scores;
-                Plugin.DebugLog($"[LRCounter] PlayerDataCache loaded: totalPP={TotalPP:F2}, scores={_scores.Count}");
+                Plugin.DebugLog($"[LRCounter] PlayerDataCache loaded: totalPP={TotalPP:F2}, scores={_scores.Count}, name='{PlayerName}'");
                 return true;
             }
             catch (Exception ex)
