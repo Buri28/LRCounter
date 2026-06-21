@@ -32,11 +32,15 @@ namespace LRCounter.Configuration
         // ─── 精度バー(外側)の配置（いずれもCanvas高さ/幅の比 0〜1） ───────
         public virtual bool ShowAccBar { get; set; } = true;      // 表示ON/OFF
         public virtual float AccBarSpacing { get; set; } = 0.34f;  // 中央(0.5)を起点とした左右バーの間隔
-        public virtual float AccBarY { get; set; } = 0.33f;       // バー下端のY
+        public virtual float AccBarY { get; set; } = 0.35f;       // バー下端のY
         public virtual float AccBarHeight { get; set; } = 0.50f;  // バーの高さ
         public virtual float AccBarWidth { get; set; } = 0.01f;   // バーの幅
         public virtual int AccBarMin { get; set; } = 90;          // バー下端にマッピングする精度(%)。選択肢: 90/80/50/0。動的レンジON時は窓幅=(100-この値)になり、その幅でスライドする
         public virtual bool AccBarDynamic { get; set; } = true;   // 動的レンジ: 幅(100-AccBarMin)%の窓を精度に追従して上下スライドする（true=ON）
+        public virtual bool ShowHandBestLabel { get; set; } = true; // バー下に「この手の自己ベスト精度」を半透明で表示する（true=ON）
+        public virtual float HandBestLabelSize { get; set; } = 2.5f;  // バー下の片手ベスト精度ラベルのフォントサイズ（バー上のラベルとは独立）
+        public virtual bool ShowBarAccuracyLabel { get; set; } = true; // バー上の精度(%)ラベルを表示する（true=ON）
+        public virtual bool ShowBarPPLabel { get; set; } = true;       // バー上のPPラベルを表示する（true=ON）
 
         // ─── 合算ラベル（左右合計の精度・PPを中央上部に表示） ───────────────
         public virtual bool ShowTotalLabel { get; set; } = true; // 表示ON/OFF

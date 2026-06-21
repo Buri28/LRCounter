@@ -54,6 +54,34 @@ namespace LRCounter.Controllers.Settings
             set { _config.ShowAccBar = value; _config.Changed(); }
         }
 
+        [UIValue("show-hand-best-label")]
+        public bool ShowHandBestLabel
+        {
+            get => _config.ShowHandBestLabel;
+            set { _config.ShowHandBestLabel = value; _config.Changed(); }
+        }
+
+        [UIValue("hand-best-size")]
+        public float HandBestLabelSize
+        {
+            get => _config.HandBestLabelSize;
+            set { _config.HandBestLabelSize = value; _config.Changed(); }
+        }
+
+        [UIValue("show-bar-acc-label")]
+        public bool ShowBarAccuracyLabel
+        {
+            get => _config.ShowBarAccuracyLabel;
+            set { _config.ShowBarAccuracyLabel = value; _config.Changed(); }
+        }
+
+        [UIValue("show-bar-pp-label")]
+        public bool ShowBarPPLabel
+        {
+            get => _config.ShowBarPPLabel;
+            set { _config.ShowBarPPLabel = value; _config.Changed(); }
+        }
+
         // ———— Shared depth ————
         [UIValue("depth-z")]
         public float DepthZ
@@ -238,6 +266,10 @@ namespace LRCounter.Controllers.Settings
             _config.TextSize = d.TextSize;
             _config.ShowTotalLabel = d.ShowTotalLabel;
             _config.ShowAccBar = d.ShowAccBar;
+            _config.ShowHandBestLabel = d.ShowHandBestLabel;
+            _config.HandBestLabelSize = d.HandBestLabelSize;
+            _config.ShowBarAccuracyLabel = d.ShowBarAccuracyLabel;
+            _config.ShowBarPPLabel = d.ShowBarPPLabel;
             _config.DepthZ = d.DepthZ;
             _config.AccBarSpacing = d.AccBarSpacing;
             _config.AccBarY = d.AccBarY;
@@ -267,6 +299,10 @@ namespace LRCounter.Controllers.Settings
             NotifyPropertyChanged(nameof(TextSize));
             NotifyPropertyChanged(nameof(ShowTotalLabel));
             NotifyPropertyChanged(nameof(ShowAccBar));
+            NotifyPropertyChanged(nameof(ShowHandBestLabel));
+            NotifyPropertyChanged(nameof(HandBestLabelSize));
+            NotifyPropertyChanged(nameof(ShowBarAccuracyLabel));
+            NotifyPropertyChanged(nameof(ShowBarPPLabel));
             NotifyPropertyChanged(nameof(DepthZ));
             NotifyPropertyChanged(nameof(AccBarSpacing));
             NotifyPropertyChanged(nameof(AccBarY));

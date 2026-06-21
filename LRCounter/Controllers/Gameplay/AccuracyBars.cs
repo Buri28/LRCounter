@@ -21,6 +21,7 @@ namespace LRCounter.Controllers.Gameplay
         private Image[]? _leftBorder;   // 閾値の枠（左/右/上/下の4帯）
         private TMP_Text? _leftLabel;
         private TMP_Text? _leftPPLabel;
+        private TMP_Text? _leftBestLabel;   // バー下: この手のベスト精度（半透明）
         private Image? _leftPPLine;        // PP取得ライン（必要精度・両手共通）
         private Image? _leftSelfBestLine;  // 両手自己ベストの精度
         private Image? _leftHandBestLine;  // この手の自己ベストの精度
@@ -32,6 +33,7 @@ namespace LRCounter.Controllers.Gameplay
         private Image[]? _rightBorder;  // 閾値の枠（左/右/上/下の4帯）
         private TMP_Text? _rightLabel;
         private TMP_Text? _rightPPLabel;
+        private TMP_Text? _rightBestLabel;   // バー下: この手のベスト精度（半透明）
         private Image? _rightPPLine;        // PP取得ライン（必要精度・両手共通）
         private Image? _rightSelfBestLine;  // 両手自己ベストの精度
         private Image? _rightHandBestLine;  // この手の自己ベストの精度
@@ -89,6 +91,7 @@ namespace LRCounter.Controllers.Gameplay
         private const float ReferenceLineHalfHeight = 0.18f;
 
         private const float BarLabelHeight = 0.05f; // %ラベルの高さ（バー上端からこのぶん上）
+        private const float HandBestLabelAlpha = 0.7f; // バー下の片手ベスト精度ラベルの不透明度（控えめに見せる）
 
         public AccuracyBars(PluginConfig config, LRTrackerService tracker, Color leftColor, Color rightColor)
         {
@@ -103,8 +106,10 @@ namespace LRCounter.Controllers.Gameplay
 
         public void Build(RectTransform canvasRT, int layer)
         {
-            (_leftFill, _leftFlashOverlay, _leftLabel, _leftPPLabel) = CreateSideBar(canvasRT, layer, isLeft: true);
-            (_rightFill, _rightFlashOverlay, _rightLabel, _rightPPLabel) = CreateSideBar(canvasRT, layer, isLeft: false);
+            (_leftFill, _leftFlashOverlay, _leftLabel, _leftPPLabel, _leftBestLabel)
+                = CreateSideBar(canvasRT, layer, isLeft: true);
+            (_rightFill, _rightFlashOverlay, _rightLabel, _rightPPLabel, _rightBestLabel)
+                = CreateSideBar(canvasRT, layer, isLeft: false);
 
             // 基準ライン（PP取得・両手自己ベスト・片手ベスト）を各バー（bg）上に作る。位置・色は Update で毎回更新。
             var leftBarRT = (RectTransform)_leftFill!.transform.parent;
@@ -199,6 +204,12 @@ namespace LRCounter.Controllers.Gameplay
             _leftPPLabel!.color = ppColor;
             _rightPPLabel!.color = ppColor;
 
+            // バー下のベスト精度ラベル（この手の自己ベスト精度）。記録なしは空。半透明で控えめに表示する。
+            Color handBestColor = LRDisplayCommon.ParseHex(_config.BorderColorHandBest);
+            handBestColor.a = HandBestLabelAlpha;
+            UpdateBestLabel(_leftBestLabel, _tracker.LeftBestAccuracy, handBestColor);
+            UpdateBestLabel(_rightBestLabel, _tracker.RightBestAccuracy, handBestColor);
+
             UpdateReferenceLines();
 
             // 閾値の枠：左右それぞれ独立に判定する。白=PP取得(合算・両手同時)を最優先、
@@ -223,16 +234,25 @@ namespace LRCounter.Controllers.Gameplay
             LRDisplayCommon.SetActive(_rightFlashOverlay?.transform, visible);
             SetBorderActive(_leftBorder, visible);
             SetBorderActive(_rightBorder, visible);
-            LRDisplayCommon.SetActive(_leftLabel?.transform, visible);
-            LRDisplayCommon.SetActive(_rightLabel?.transform, visible);
-            LRDisplayCommon.SetActive(_leftPPLabel?.transform, visible);
-            LRDisplayCommon.SetActive(_rightPPLabel?.transform, visible);
+            // バー上の精度(%)・PPラベルはそれぞれ独立にON/OFF（バー表示ONが前提）
+            bool accLabelVisible = visible && _config.ShowBarAccuracyLabel;
+            bool ppLabelVisible = visible && _config.ShowBarPPLabel;
+            LRDisplayCommon.SetActive(_leftLabel?.transform, accLabelVisible);
+            LRDisplayCommon.SetActive(_rightLabel?.transform, accLabelVisible);
+            LRDisplayCommon.SetActive(_leftPPLabel?.transform, ppLabelVisible);
+            LRDisplayCommon.SetActive(_rightPPLabel?.transform, ppLabelVisible);
+
+            // バー下のベスト精度ラベルは、バー表示ONかつベストラベルONのときだけ表示する
+            bool bestVisible = visible && _config.ShowHandBestLabel;
+            LRDisplayCommon.SetActive(_leftBestLabel?.transform, bestVisible);
+            LRDisplayCommon.SetActive(_rightBestLabel?.transform, bestVisible);
         }
 
         // ─── 構築 ──────────────────────────────────────────────────────────────────
 
-        // 戻り値: (塗りつぶし画像, フラッシュオーバーレイ, %ラベル, PPラベル)
-        private (Image fill, Image flashOverlay, TMP_Text label, TMP_Text ppLabel) CreateSideBar(
+        // 戻り値: (塗りつぶし画像, フラッシュオーバーレイ, %ラベル, PPラベル, ベスト精度ラベル)
+        private (Image fill, Image flashOverlay, TMP_Text label, TMP_Text ppLabel,
+            TMP_Text bestLabel) CreateSideBar(
             RectTransform canvasRT, int layer, bool isLeft)
         {
             Color color = isLeft ? _leftColor : _rightColor;
@@ -344,7 +364,36 @@ namespace LRCounter.Controllers.Gameplay
 #pragma warning restore CS0618
             ppLabel.overflowMode = TextOverflowModes.Overflow;
 
-            return (fill, flashImg, label, ppLabel);
+            // --- ベスト精度ラベル（バー下端のすぐ下・半透明） ---
+            var bestLabel = CreateBelowBarLabel(canvasRT, layer, $"LRBest_{side}",
+                barXMin, barXMax, barBottom - BarLabelHeight, barBottom, color);
+
+            return (fill, flashImg, label, ppLabel, bestLabel);
+        }
+
+        // バー下に置く1行ラベルを生成する（ベスト精度・ベストPP用）。色・文字は Update で更新。
+        private TMP_Text CreateBelowBarLabel(RectTransform canvasRT, int layer, string name,
+            float xMin, float xMax, float yMin, float yMax, Color color)
+        {
+            var go = new GameObject(name);
+            go.layer = layer;
+            var rt = go.AddComponent<RectTransform>();
+            rt.SetParent(canvasRT, false);
+            rt.anchorMin = new Vector2(xMin, yMin);
+            rt.anchorMax = new Vector2(xMax, yMax);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+#pragma warning disable CS0618
+            var label = BeatSaberUI.CreateText(rt, "", Vector2.zero);
+#pragma warning restore CS0618
+            label.color = color;
+            label.fontSize = Mathf.Max(_config.HandBestLabelSize, 1f); // バー下ラベルは独立サイズ（既定はバー上より小さい）
+            label.alignment = TextAlignmentOptions.Center;
+#pragma warning disable CS0618
+            label.enableWordWrapping = false;
+#pragma warning restore CS0618
+            label.overflowMode = TextOverflowModes.Overflow;
+            return label;
         }
 
         // ─── 閾値の枠（バー外周の4帯）を生成する ─────────────────────────────────────
@@ -461,6 +510,15 @@ namespace LRCounter.Controllers.Gameplay
             var rt = (RectTransform)line.transform;
             rt.anchorMin = new Vector2(0f, frac);
             rt.anchorMax = new Vector2(1f, frac);
+        }
+
+        // バー下のベスト精度ラベルの文字色・内容を更新する。
+        //   bestAcc : この手のベスト精度(0〜1)。0(記録なし)は空表示。color は半透明済みを渡す。
+        private static void UpdateBestLabel(TMP_Text? accLabel, double bestAcc, Color color)
+        {
+            if (accLabel == null) return;
+            accLabel.color = color;
+            accLabel.text = bestAcc > 0 ? $"PB:{bestAcc * 100.0:F1}%" : "";
         }
 
         // 精度(%)を窓[low, low+幅]で正規化して塗りつぶし量(0〜1)に変換する
