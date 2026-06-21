@@ -66,6 +66,10 @@ namespace LRCounter.Controllers.Gameplay
         // NF失敗したか（PP取得＝白ボーダーは失敗プレイでは成立しないので消灯させる判定に使う）。
         public bool Failed => _penaltyApplied;
 
+        // 曲開始時に判定したリプレイ所有者。曲終了時(Dispose)はこの値で記録要否を決める。
+        // 終了時に判定するとBeatLeader等が先に後片付けしてフラグが戻り「通常プレイ」に化けるため、開始時に固定する。
+        private ReplayDetector.Ownership _replayOwnership = ReplayDetector.Ownership.NotReplay;
+
         // ゲーム画面に表示するPP。NF失敗時は提出スコア半減を反映し、実効精度（精度×係数）から再計算する。
         // 通常クリア（係数1.0）は LeftTracker.PP / RightTracker.PP / TotalPP と同値。
         public double LeftDisplayPP => PPCalculator.CalculatePP(LeftTracker.Accuracy * _scoreFactor, StarRating);
@@ -116,6 +120,10 @@ namespace LRCounter.Controllers.Gameplay
         public async void Initialize()
         {
             if (!_config.Enabled) return;
+
+            // リプレイ所有者を曲開始時に確定させる（終了時はフラグが戻りうるので、ここでキャッシュする）。
+            _replayOwnership = ReplayDetector.GetOwnership();
+            Plugin.DebugLog($"[LRCounter] Replay ownership at start: {_replayOwnership}");
 
             // ノーツ判定完了イベントを購読（倍率は各ノーツのscoringElementから取得する）
             _scoreController.scoringForNoteFinishedEvent += OnScoringForNoteFinished;
@@ -197,6 +205,7 @@ namespace LRCounter.Controllers.Gameplay
                 if (StarRating <= 0 || TotalPP <= 0) return;          // アンランクは対象外
                 if (_penaltyApplied) return;                          // NF失敗は提出スコアが半減するので推定が合わない
                 if (_sceneSetupData.practiceSettings != null) return; // 練習モードは提出されない
+                if (ReplayDetector.ShouldSkip(_replayOwnership)) return; // 他人(または所有者不明)のリプレイはキャッシュも汚さない
 
                 string? hash = GetCurrentMapHash();
                 if (hash == null) return;
@@ -227,6 +236,8 @@ namespace LRCounter.Controllers.Gameplay
             try
             {
                 if (_sceneSetupData.practiceSettings != null) return (false, 0, 0); // 練習は記録しない
+                // 他人(または所有者不明)のリプレイは記録しない。自分のリプレイは過去ベストの復元になりうるので記録する。
+                if (ReplayDetector.ShouldSkip(_replayOwnership)) return (false, 0, 0);
 
                 int fullMaxScore = ScoreModel.ComputeMaxMultipliedScoreForBeatmap(_sceneSetupData.transformedBeatmapData);
                 if (fullMaxScore <= 0 || _maxTotalScore < fullMaxScore) return (false, 0, 0); // フルクリアのみ
@@ -439,8 +450,8 @@ namespace LRCounter.Controllers.Gameplay
             if (maxCut <= 0) return;
 
             int actualMult = scoringElement.multiplier;    // 実倍率（ゲームがカット時刻順に確定）
-            int idealMult  = scoringElement.maxMultiplier; // FC想定倍率（分母用）
-            int cutScore   = scoringElement.cutScore;      // 生スコア（グッド以外は0）
+            int idealMult = scoringElement.maxMultiplier; // FC想定倍率（分母用）
+            int cutScore = scoringElement.cutScore;      // 生スコア（グッド以外は0）
             _lastMultiplier = actualMult;
 
             // 左右どちらのトラッカーか（ColorA=左手, ColorB=右手）
@@ -460,7 +471,7 @@ namespace LRCounter.Controllers.Gameplay
 
             // 両手合算スコアを更新（ゲームの _multipliedScore / 最大スコアと一致する）
             // グッド以外は cutScore=0 なので _totalScore は増えない
-            _totalScore    += cutScore * actualMult;
+            _totalScore += cutScore * actualMult;
             _maxTotalScore += maxCut * idealMult;
 
             // 両手合算の精度からTotalPPを計算
