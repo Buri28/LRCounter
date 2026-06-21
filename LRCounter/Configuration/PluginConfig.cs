@@ -29,6 +29,11 @@ namespace LRCounter.Configuration
         // Canvas全体をカメラ側へ寄せて前面化する距離(ワールド単位/メートル)。大きいほど手前。
         public virtual float DepthZ { get; set; } = -0.30f;
 
+        // 表示の位置・スケールを環境非依存の固定にするか。
+        //   true (既定) … 環境（Environment）に関係なく固定位置・固定スケール。環境オーバーライド譜面でもズレない。
+        //   false       … 従来どおりゲームHUDの位置・スケールに追従（HUDが動く環境では一緒にズレる）。
+        public virtual bool FixedCanvasPlacement { get; set; } = true;
+
         // ─── 精度バー(外側)の配置（いずれもCanvas高さ/幅の比 0〜1） ───────
         public virtual bool ShowAccBar { get; set; } = true;      // 表示ON/OFF
         public virtual float AccBarSpacing { get; set; } = 0.34f;  // 中央(0.5)を起点とした左右バーの間隔

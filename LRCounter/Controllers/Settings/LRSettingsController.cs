@@ -90,6 +90,13 @@ namespace LRCounter.Controllers.Settings
             set { _config.DepthZ = value; _config.Changed(); }
         }
 
+        [UIValue("fixed-placement")]
+        public bool FixedCanvasPlacement
+        {
+            get => _config.FixedCanvasPlacement;
+            set { _config.FixedCanvasPlacement = value; _config.Changed(); }
+        }
+
         // ———— Accuracy bar layout ————
         [UIValue("acc-spacing")]
         public float AccBarSpacing
@@ -266,6 +273,7 @@ namespace LRCounter.Controllers.Settings
             _config.TextSize = d.TextSize;
             _config.ShowTotalLabel = d.ShowTotalLabel;
             _config.ShowAccBar = d.ShowAccBar;
+            _config.FixedCanvasPlacement = d.FixedCanvasPlacement;
             _config.ShowHandBestLabel = d.ShowHandBestLabel;
             _config.HandBestLabelSize = d.HandBestLabelSize;
             _config.ShowBarAccuracyLabel = d.ShowBarAccuracyLabel;
@@ -299,6 +307,7 @@ namespace LRCounter.Controllers.Settings
             NotifyPropertyChanged(nameof(TextSize));
             NotifyPropertyChanged(nameof(ShowTotalLabel));
             NotifyPropertyChanged(nameof(ShowAccBar));
+            NotifyPropertyChanged(nameof(FixedCanvasPlacement));
             NotifyPropertyChanged(nameof(ShowHandBestLabel));
             NotifyPropertyChanged(nameof(HandBestLabelSize));
             NotifyPropertyChanged(nameof(ShowBarAccuracyLabel));
