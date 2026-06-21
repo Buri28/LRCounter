@@ -25,6 +25,18 @@ namespace LRCounter.Controllers.Gameplay
         // Canvasの基準Yオフセット(ワールド単位)。ゲームHUDのCanvas位置からこのぶん上にずらす。
         private const float CanvasBaseYOffset = 1.3f;
 
+        // Canvasの固定スケール（環境非依存）。以前はゲームHUDの lossyScale×3 をコピーしていたが、
+        // 環境（Environment）オーバーライドを使う譜面ではHUDのスケールが変わり、LRCounterも一緒に
+        // 拡大して「左右に広がる／近づく」ズレが出ていた。環境に依存しない固定値にして一定に保つ。
+        // 値は従来の標準環境相当（フォールバック 0.02 × 3 = 0.06）。
+        private const float FixedCanvasScale = 0.06f;
+
+        // Canvasの基準位置・回転（環境非依存の固定値）。標準環境のHUD(EnergyPanel)の値に一致する。
+        // 環境オーバーライドを使う譜面ではHUDが手前・上に動き、追従すると「近づく／広がる」ズレが出るため、
+        // HUDのTransformはコピーせずこの固定値を使う（layer/sorting だけは見つけたHUD Canvasから取る）。
+        private static readonly Vector3 FixedRefPos = new Vector3(0f, -0.64f, 7.75f);
+        private static readonly Quaternion FixedRefRot = Quaternion.identity;
+
         [Inject]
         public LRDisplayController(
             LRTrackerService trackerService,
@@ -74,19 +86,30 @@ namespace LRCounter.Controllers.Gameplay
             var refCanvas = _hudController.GetComponent<Canvas>()
                             ?? _hudController.GetComponentInChildren<Canvas>(true);
 
-            // 参照Canvasが見つからない場合に備えたフォールバック値（通常は下で上書きされる）
-            Vector3 refPos = new Vector3(0f, -0.64f, 7.75f);
-            Quaternion refRot = Quaternion.identity;
-            Vector3 refScale = Vector3.one * 0.02f;
+            // 配置の基準。既定（FixedCanvasPlacement=true）は環境非依存の固定値を使う。
+            // 設定でOFFにすると従来どおりHUD CanvasのTransform（位置・回転・スケール×3）に追従する。
+            // HUDからは layer/sorting は常に借りて前面描画に合わせる。
+            Vector3 refPos = FixedRefPos;
+            Quaternion refRot = FixedRefRot;
+            Vector3 canvasScale = Vector3.one * FixedCanvasScale;
             int layer = _hudController.gameObject.layer;
 
             if (refCanvas != null)
             {
-                Plugin.DebugLog("[LRCounter] Found ref canvas: " + refCanvas.name);
-                refPos = refCanvas.transform.position;
-                refRot = refCanvas.transform.rotation;
-                refScale = refCanvas.transform.lossyScale;
                 layer = refCanvas.gameObject.layer;
+
+                if (!_config.FixedCanvasPlacement)
+                {
+                    // HUD追従モード：位置・回転・スケール(×3)をHUD Canvasからコピーする（環境でズレうる）。
+                    refPos = refCanvas.transform.position;
+                    refRot = refCanvas.transform.rotation;
+                    canvasScale = refCanvas.transform.lossyScale * 3f;
+                }
+
+                // 参考: 見つけたHUD Canvasの実Transform（環境で変動しうる）。
+                Plugin.DebugLog($"[LRCounter] RefCanvas='{refCanvas.name}' pos={refCanvas.transform.position} " +
+                    $"rotEuler={refCanvas.transform.rotation.eulerAngles} lossyScale={refCanvas.transform.lossyScale} " +
+                    $"fixedPlacement={_config.FixedCanvasPlacement}");
             }
 
             // ワールドスペースCanvasを生成
@@ -105,15 +128,14 @@ namespace LRCounter.Controllers.Gameplay
             }
             canvas.overrideSorting = true;
 
-            Plugin.DebugLog($"[LRCounter] refPos={refPos}  refScale={refScale}  sortingLayer={canvas.sortingLayerName}");
+            Plugin.DebugLog($"[LRCounter] refPos={refPos}  fixedScale={FixedCanvasScale}  sortingLayer={canvas.sortingLayerName}");
             // Z はワールド座標でカメラ側へ DepthZ ぶん寄せて前面化する（傾きの影響を受けず高さは不変）。
             _canvasObject.transform.position = new Vector3(
                 refPos.x,
                 refPos.y + CanvasBaseYOffset,
                 refPos.z - _config.DepthZ);
             _canvasObject.transform.rotation = refRot;
-            // ゲームHUDのスケールをそのまま使うと小さすぎるため3倍に拡大
-            _canvasObject.transform.localScale = refScale * 3f;
+            _canvasObject.transform.localScale = canvasScale;
 
             // Canvasの論理サイズ（200×100）。anchorで割合指定するので実際の見た目に影響する
             var canvasRT = (RectTransform)_canvasObject.transform;
