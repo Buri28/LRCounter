@@ -92,51 +92,61 @@ namespace LRCounter.Controllers
 
         // ─── プレイヤー情報取得 ────────────────────────────────────────────────────
 
-        // ScoreSaberに登録されているプレイヤーの現在合計PPを取得する。
-        // 取得失敗時は null を返す（呼び出し側でキャッシュせず再試行できるよう0と区別する）。
+        // ScoreSaberに登録されているプレイヤーの「合計PP」と「表示名」を1回の取得でまとめて返す。
+        // どちらも同じ /players/{id} 応答に含まれるので、APIは1本で済む（以前は totalPP と name で2回叩いていた）。
+        // 表示名はリプレイ所有者判定（自分/他人）のローカル名に使う。
+        // totalPP が取れなければ失敗扱いで (null, name) を返す（呼び出し側でキャッシュせず再試行できるよう0と区別する）。
         // v2が失敗したらv1へフォールバックする。
-        // エンドポイント(v2): /api/v2/players/{id}      … stats.totalPP
-        // エンドポイント(v1): /api/player/{id}/full     … playerInfo直下の "pp"
-        public async Task<double?> GetPlayerTotalPPAsync(string playerId)
+        // エンドポイント(v2): /api/v2/players/{id}   … 合計PP=stats.totalPP / 表示名=トップレベル "name"
+        // エンドポイント(v1): /api/player/{id}/full  … 合計PP=トップレベル "pp"  / 表示名=トップレベル "name"
+        public async Task<(double? totalPP, string? name)> GetPlayerProfileAsync(string playerId)
         {
             if (!_v2Unavailable)
             {
                 // v2では合計PPは stats.totalPP に入っている（v1のトップレベル "pp" から変更）
-                double? pp = await FetchNumberAsync(
+                var v2 = await FetchProfileAsync(
                     $"https://scoresaber.com/api/v2/players/{playerId}",
-                    @"""totalPP""\s*:\s*([\d.]+)", "totalPP");
-                if (pp != null) return pp;
+                    @"""totalPP""\s*:\s*([\d.]+)");
+                if (v2.totalPP != null) return v2;
             }
 
-            // v1ではトップレベル（playerInfo直下）の "pp"。最初に一致する "pp": がそれ
-            double? v1pp = await FetchNumberAsync(
+            // v1ではトップレベルの "pp"。最初に一致する "pp": がそれ
+            var v1 = await FetchProfileAsync(
                 $"https://scoresaber.com/api/player/{playerId}/full",
-                @"""pp""\s*:\s*([\d.]+)", "pp");
-            if (v1pp != null) NoteV2Unavailable();
-            return v1pp;
+                @"""pp""\s*:\s*([\d.]+)");
+            if (v1.totalPP != null) NoteV2Unavailable();
+            return v1;
         }
 
-        // 指定URLのJSONから pattern に最初に一致した数値を取り出す。失敗時は null。
-        private static async Task<double?> FetchNumberAsync(string url, string pattern, string fieldName)
+        // 指定URLを1回だけ取得し、合計PP（ppPattern の最初の一致）と表示名（最初の "name"）を同時に取り出す。
+        // 表示名はリッチテキスト（色付き名）込みの生の値。正規化は呼び出し側（所有者判定）で行う。失敗時は (null, null)。
+        private static async Task<(double? totalPP, string? name)> FetchProfileAsync(string url, string ppPattern)
         {
             try
             {
                 Plugin.DebugLog($"[ScoreSaberApi] GET {url}");
                 string json = await Http.GetStringAsync(url);
 
-                var m = Regex.Match(json, pattern);
-                if (m.Success && double.TryParse(
-                        m.Groups[1].Value, NumberStyles.Float,
+                double? pp = null;
+                var pm = Regex.Match(json, ppPattern);
+                if (pm.Success && double.TryParse(
+                        pm.Groups[1].Value, NumberStyles.Float,
                         CultureInfo.InvariantCulture, out double value))
-                    return value;
+                    pp = value;
+                else
+                    Plugin.Log.Warn("[ScoreSaberApi] 'totalPP/pp' field not found.");
 
-                Plugin.Log.Warn($"[ScoreSaberApi] '{fieldName}' field not found.");
+                string? name = null;
+                var nm = Regex.Match(json, @"""name""\s*:\s*""((?:[^""\\]|\\.)*)""");
+                if (nm.Success) name = Regex.Unescape(nm.Groups[1].Value);
+
+                return (pp, name);
             }
             catch (Exception ex)
             {
-                Plugin.Log.Warn($"[ScoreSaberApi] GET {fieldName} failed: {Describe(ex)}");
+                Plugin.Log.Warn($"[ScoreSaberApi] GET profile failed: {Describe(ex)}");
+                return (null, null);
             }
-            return null;
         }
 
         // ─── 譜面Star評価取得 ──────────────────────────────────────────────────────
