@@ -124,7 +124,7 @@ namespace LRCounter.Controllers.Gameplay
             // リプレイ所有者を曲開始時に確定させる（終了時はフラグが戻りうるので、ここでキャッシュする）。
             // ScoreSaberのローカル名は自前APIで取得した名前を渡す（内部の PlayerService は別コンテナで解決できないため）。
             _replayOwnership = ReplayDetector.GetOwnership(_playerDataCache.PlayerName);
-            Plugin.Log.Info($"[LRCounter] Replay ownership at start: {_replayOwnership}");
+            Plugin.DebugLog($"[LRCounter] Replay ownership at start: {_replayOwnership}");
 
             // ノーツ判定完了イベントを購読（倍率は各ノーツのscoringElementから取得する）
             _scoreController.scoringForNoteFinishedEvent += OnScoringForNoteFinished;
