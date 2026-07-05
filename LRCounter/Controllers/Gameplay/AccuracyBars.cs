@@ -42,7 +42,7 @@ namespace LRCounter.Controllers.Gameplay
         // フラッシュ終了時刻（Time.time基準、-1は非アクティブ）
         private float _leftFlashEnd = -1f;
         private float _rightFlashEnd = -1f;
-        private const float FlashDuration = 0.4f;
+        private float FlashDuration => _config.FlashDuration;
 
         // ─── 閾値の枠（バー外周を縁取る。全面塗りだと塗り色とブレンドして判別しにくいため枠方式） ───
         // 左右独立に点灯する。優先度: 白(PP取得＝合算ThresholdPP超え・両手同時) ＞ 黄(両手の自己ベスト精度
@@ -221,8 +221,8 @@ namespace LRCounter.Controllers.Gameplay
         public void TickFlash()
         {
             float t = Time.time;
-            SetFlashAlpha(_leftFlashOverlay, _leftFlashEnd, t);
-            SetFlashAlpha(_rightFlashOverlay, _rightFlashEnd, t);
+            SetFlashAlpha(_leftFlashOverlay, _leftFlashEnd, t, FlashDuration);
+            SetFlashAlpha(_rightFlashOverlay, _rightFlashEnd, t, FlashDuration);
         }
 
         public void ApplyVisibility()
@@ -631,7 +631,7 @@ namespace LRCounter.Controllers.Gameplay
         }
 
         // フラッシュの残り時間に応じてアルファを計算し、時間切れなら透明にする
-        private static void SetFlashAlpha(Image? overlay, float endTime, float now)
+        private static void SetFlashAlpha(Image? overlay, float endTime, float now, float duration)
         {
             if (overlay == null) return;
             const float baseAlpha = 0.6f;
@@ -640,7 +640,7 @@ namespace LRCounter.Controllers.Gameplay
                 overlay.color = new Color(1f, 0f, 0f, 0f);
                 return;
             }
-            float alpha = Mathf.Clamp01((endTime - now) / FlashDuration) * baseAlpha;
+            float alpha = Mathf.Clamp01((endTime - now) / duration) * baseAlpha;
             overlay.color = new Color(1f, 0f, 0f, alpha);
         }
     }
