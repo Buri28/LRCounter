@@ -46,6 +46,7 @@ namespace LRCounter.Configuration
         public virtual float HandBestLabelSize { get; set; } = 2.5f;  // バー下の片手ベスト精度ラベルのフォントサイズ（バー上のラベルとは独立）
         public virtual bool ShowBarAccuracyLabel { get; set; } = true; // バー上の精度(%)ラベルを表示する（true=ON）
         public virtual bool ShowBarPPLabel { get; set; } = true;       // バー上のPPラベルを表示する（true=ON）
+        public virtual float FlashDuration { get; set; } = 0.6f;      // ノーツヒット時のフラッシュが消えるまでの秒数
 
         // ─── 合算ラベル（左右合計の精度・PPを中央上部に表示） ───────────────
         public virtual bool ShowTotalLabel { get; set; } = true; // 表示ON/OFF

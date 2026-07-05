@@ -82,6 +82,13 @@ namespace LRCounter.Controllers.Settings
             set { _config.ShowBarPPLabel = value; _config.Changed(); }
         }
 
+        [UIValue("flash-duration")]
+        public float FlashDuration
+        {
+            get => _config.FlashDuration;
+            set { _config.FlashDuration = value; _config.Changed(); }
+        }
+
         // ———— Shared depth ————
         [UIValue("depth-z")]
         public float DepthZ
@@ -278,6 +285,7 @@ namespace LRCounter.Controllers.Settings
             _config.HandBestLabelSize = d.HandBestLabelSize;
             _config.ShowBarAccuracyLabel = d.ShowBarAccuracyLabel;
             _config.ShowBarPPLabel = d.ShowBarPPLabel;
+            _config.FlashDuration = d.FlashDuration;
             _config.DepthZ = d.DepthZ;
             _config.AccBarSpacing = d.AccBarSpacing;
             _config.AccBarY = d.AccBarY;
@@ -312,6 +320,7 @@ namespace LRCounter.Controllers.Settings
             NotifyPropertyChanged(nameof(HandBestLabelSize));
             NotifyPropertyChanged(nameof(ShowBarAccuracyLabel));
             NotifyPropertyChanged(nameof(ShowBarPPLabel));
+            NotifyPropertyChanged(nameof(FlashDuration));
             NotifyPropertyChanged(nameof(DepthZ));
             NotifyPropertyChanged(nameof(AccBarSpacing));
             NotifyPropertyChanged(nameof(AccBarY));
