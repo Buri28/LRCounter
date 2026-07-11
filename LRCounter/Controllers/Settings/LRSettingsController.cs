@@ -89,6 +89,56 @@ namespace LRCounter.Controllers.Settings
             set { _config.FlashDuration = value; _config.Changed(); }
         }
 
+        // ———— 精度低下・低スコア時のサウンド ————
+        [UIValue("drop-sound-acc-enabled")]
+        public bool DropSoundAccuracyEnabled
+        {
+            get => _config.DropSoundAccuracyEnabled;
+            set { _config.DropSoundAccuracyEnabled = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-score-enabled")]
+        public bool DropSoundScoreEnabled
+        {
+            get => _config.DropSoundScoreEnabled;
+            set { _config.DropSoundScoreEnabled = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-volume")]
+        public float DropSoundVolume
+        {
+            get => _config.DropSoundVolume;
+            set { _config.DropSoundVolume = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-left-freq")]
+        public float DropSoundLeftFrequency
+        {
+            get => _config.DropSoundLeftFrequency;
+            set { _config.DropSoundLeftFrequency = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-right-freq")]
+        public float DropSoundRightFrequency
+        {
+            get => _config.DropSoundRightFrequency;
+            set { _config.DropSoundRightFrequency = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-threshold")]
+        public float DropSoundThreshold
+        {
+            get => _config.DropSoundThreshold;
+            set { _config.DropSoundThreshold = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-score-threshold")]
+        public int DropSoundScoreThreshold
+        {
+            get => _config.DropSoundScoreThreshold;
+            set { _config.DropSoundScoreThreshold = value; _config.Changed(); }
+        }
+
         // ———— Shared depth ————
         [UIValue("depth-z")]
         public float DepthZ
@@ -286,6 +336,13 @@ namespace LRCounter.Controllers.Settings
             _config.ShowBarAccuracyLabel = d.ShowBarAccuracyLabel;
             _config.ShowBarPPLabel = d.ShowBarPPLabel;
             _config.FlashDuration = d.FlashDuration;
+            _config.DropSoundAccuracyEnabled = d.DropSoundAccuracyEnabled;
+            _config.DropSoundScoreEnabled = d.DropSoundScoreEnabled;
+            _config.DropSoundVolume = d.DropSoundVolume;
+            _config.DropSoundLeftFrequency = d.DropSoundLeftFrequency;
+            _config.DropSoundRightFrequency = d.DropSoundRightFrequency;
+            _config.DropSoundThreshold = d.DropSoundThreshold;
+            _config.DropSoundScoreThreshold = d.DropSoundScoreThreshold;
             _config.DepthZ = d.DepthZ;
             _config.AccBarSpacing = d.AccBarSpacing;
             _config.AccBarY = d.AccBarY;
@@ -321,6 +378,13 @@ namespace LRCounter.Controllers.Settings
             NotifyPropertyChanged(nameof(ShowBarAccuracyLabel));
             NotifyPropertyChanged(nameof(ShowBarPPLabel));
             NotifyPropertyChanged(nameof(FlashDuration));
+            NotifyPropertyChanged(nameof(DropSoundAccuracyEnabled));
+            NotifyPropertyChanged(nameof(DropSoundScoreEnabled));
+            NotifyPropertyChanged(nameof(DropSoundVolume));
+            NotifyPropertyChanged(nameof(DropSoundLeftFrequency));
+            NotifyPropertyChanged(nameof(DropSoundRightFrequency));
+            NotifyPropertyChanged(nameof(DropSoundThreshold));
+            NotifyPropertyChanged(nameof(DropSoundScoreThreshold));
             NotifyPropertyChanged(nameof(DepthZ));
             NotifyPropertyChanged(nameof(AccBarSpacing));
             NotifyPropertyChanged(nameof(AccBarY));

@@ -44,6 +44,12 @@ namespace LRCounter.Controllers.Gameplay
         private float _rightFlashEnd = -1f;
         private float FlashDuration => _config.FlashDuration;
 
+        // 精度低下時のサウンド（フラッシュと同じタイミングで鳴らす）
+        private readonly DropSoundPlayer _dropSound;
+        // 低スコアカット検知用: 前回見た CutScoreSerial（新しいカットが来たかの判定）
+        private int _leftPrevCutSerial;
+        private int _rightPrevCutSerial;
+
         // ─── 閾値の枠（バー外周を縁取る。全面塗りだと塗り色とブレンドして判別しにくいため枠方式） ───
         // 左右独立に点灯する。優先度: 白(PP取得＝合算ThresholdPP超え・両手同時) ＞ 黄(両手の自己ベスト精度
         // 更新・両手同時) ＞ 橙(その手の自己ベスト精度更新・その手だけ)。
@@ -99,6 +105,7 @@ namespace LRCounter.Controllers.Gameplay
             _tracker = tracker;
             _leftColor = leftColor;
             _rightColor = rightColor;
+            _dropSound = new DropSoundPlayer(config);
 
             // 初期の窓は最上段[AccBarMin,100]。動的ならここから下へスライドしうる。
             _windowLow = config.AccBarMin;
@@ -124,6 +131,9 @@ namespace LRCounter.Controllers.Gameplay
             // 閾値の枠（バー外周）。塗り・フラッシュより後に作り、バーの外側に配置する。
             _leftBorder = CreateBorder(canvasRT, layer, isLeft: true);
             _rightBorder = CreateBorder(canvasRT, layer, isLeft: false);
+
+            // 精度低下サウンド。Canvas 配下に作るので曲終了時に一緒に破棄される。
+            _dropSound.Build(canvasRT);
         }
 
         public void Update()
@@ -133,11 +143,22 @@ namespace LRCounter.Controllers.Gameplay
             double leftAcc = _tracker.LeftTracker.Accuracy * 100;
             double rightAcc = _tracker.RightTracker.Accuracy * 100;
 
-            // 前回より精度が下がっていたらフラッシュ開始
-            if (_prevLeftAcc > 0 && leftAcc < _prevLeftAcc)
-                _leftFlashEnd = Time.time + FlashDuration;
-            if (_prevRightAcc > 0 && rightAcc < _prevRightAcc)
-                _rightFlashEnd = Time.time + FlashDuration;
+            // 前回より精度が下がっていたらフラッシュ開始。サウンドは低下量(%)が閾値以上のときだけ、
+            // 左右それぞれ別の音で鳴らす（閾値0なら少しでも下がれば鳴る）
+            bool leftDropped = _prevLeftAcc > 0 && leftAcc < _prevLeftAcc;
+            bool rightDropped = _prevRightAcc > 0 && rightAcc < _prevRightAcc;
+            if (leftDropped) _leftFlashEnd = Time.time + FlashDuration;
+            if (rightDropped) _rightFlashEnd = Time.time + FlashDuration;
+            // 加えて、カットスコアが設定値を下回ったときも鳴らす（例:110設定→109点以下で鳴る）。
+            // 精度低下・低スコアはそれぞれ独立に有効/無効を切り替えられる。両方満たしても1回だけ鳴る。
+            bool accSound = _config.DropSoundAccuracyEnabled;
+            double soundThreshold = _config.DropSoundThreshold;
+            bool leftLowScore = IsNewLowScoreCut(_tracker.LeftTracker, ref _leftPrevCutSerial);
+            bool rightLowScore = IsNewLowScoreCut(_tracker.RightTracker, ref _rightPrevCutSerial);
+            if ((accSound && leftDropped && _prevLeftAcc - leftAcc >= soundThreshold) || leftLowScore)
+                _dropSound.Play(isLeft: true);
+            if ((accSound && rightDropped && _prevRightAcc - rightAcc >= soundThreshold) || rightLowScore)
+                _dropSound.Play(isLeft: false);
             _prevLeftAcc = leftAcc;
             _prevRightAcc = rightAcc;
 
@@ -519,6 +540,18 @@ namespace LRCounter.Controllers.Gameplay
             if (accLabel == null) return;
             accLabel.color = color;
             accLabel.text = bestAcc > 0 ? $"PB:{bestAcc * 100.0:F1}%" : "";
+        }
+
+        // その手で新しいカット（115満点ノーツのみ）があり、そのスコアが設定閾値未満なら true。
+        // チェーンノーツはスコアの意味が異なるため対象外（CutScoreSerial が増えない）。
+        // シリアルの追従は無効時も行い、有効化直後に過去のカットで鳴らないようにする。
+        private bool IsNewLowScoreCut(HandPPTracker tracker, ref int prevSerial)
+        {
+            int serial = tracker.CutScoreSerial;
+            bool isNew = serial != prevSerial;
+            prevSerial = serial;
+            return _config.DropSoundScoreEnabled && isNew
+                && tracker.LastCutScore < _config.DropSoundScoreThreshold;
         }
 
         // 精度(%)を窓[low, low+幅]で正規化して塗りつぶし量(0〜1)に変換する

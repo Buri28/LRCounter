@@ -25,6 +25,7 @@ namespace LRCounter.Models
 
         public double PP          { get; private set; } = 0;   // 現在の精度から推定されるPP（StarRatingが0なら0）
         public int    LastCutScore { get; private set; } = -1;  // 直前のカット生スコア（0〜115）、未カット時は-1
+        public int    CutScoreSerial { get; private set; } = 0; // LastCutScore が更新されるたびに+1（新しいカットの検知用）
 
         private double _starRating = 0; // PP計算に使うStar評価（LRTrackerServiceからセットされる）
 
@@ -53,7 +54,10 @@ namespace LRCounter.Models
             TotalNotes++;
             // LastCutScore（デバッグ表示用）は115満点ノーツのみ記録する（チェーンは生スコアの意味が異なるため）
             if (maxCutScore == PPCalculator.MaxNoteScore)
+            {
                 LastCutScore = score;
+                CutScoreSerial++;
+            }
             RecalculatePP();
         }
 
@@ -93,6 +97,8 @@ namespace LRCounter.Models
             MissedNotes      = 0;
             BadCuts          = 0;
             PP               = 0;
+            LastCutScore     = -1;
+            CutScoreSerial   = 0;
         }
 
         // 現在のAccuracyとStarRatingからPPを再計算する

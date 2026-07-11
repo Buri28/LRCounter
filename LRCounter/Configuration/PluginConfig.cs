@@ -48,6 +48,15 @@ namespace LRCounter.Configuration
         public virtual bool ShowBarPPLabel { get; set; } = true;       // バー上のPPラベルを表示する（true=ON）
         public virtual float FlashDuration { get; set; } = 0.6f;      // ノーツヒット時のフラッシュが消えるまでの秒数
 
+        // ─── 精度低下・低スコア時のサウンド（フラッシュと同じタイミングで鳴る低いビープ音） ───
+        public virtual bool DropSoundAccuracyEnabled { get; set; } = true;  // 精度低下で鳴らすON/OFF
+        public virtual bool DropSoundScoreEnabled { get; set; } = false;    // カットスコアが閾値未満で鳴らすON/OFF
+        public virtual float DropSoundVolume { get; set; } = 1.0f;     // 音量(0〜1)
+        public virtual float DropSoundLeftFrequency { get; set; } = 220f;   // 左手用ビープ周波数(Hz)。低めの音が既定
+        public virtual float DropSoundRightFrequency { get; set; } = 880f;  // 右手用ビープ周波数(Hz)。左より高めで聞き分けやすく
+        public virtual float DropSoundThreshold { get; set; } = 0.1f;  // 音を鳴らす精度低下量の閾値(%)。前回比でこの値以上下がったときだけ鳴る(0=少しでも下がれば鳴る)
+        public virtual int DropSoundScoreThreshold { get; set; } = 110;  // カットスコア(0〜115)がこの値を下回ったら鳴らす(例:110→109点以下で鳴る)
+
         // ─── 合算ラベル（左右合計の精度・PPを中央上部に表示） ───────────────
         public virtual bool ShowTotalLabel { get; set; } = true; // 表示ON/OFF
         public virtual float TotalLabelX { get; set; } = 0.5f;   // 中心X（Canvas幅比）

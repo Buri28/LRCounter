@@ -33,6 +33,10 @@
       <HintPath>$(BeatSaberManagedPath)\UnityEngine.CoreModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(BeatSaberManagedPath)\UnityEngine.AudioModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="UnityEngine.UIModule">
       <HintPath>$(BeatSaberManagedPath)\UnityEngine.UIModule.dll</HintPath>
       <Private>False</Private>

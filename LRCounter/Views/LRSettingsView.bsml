@@ -1,226 +1,321 @@
 <bg>
-  <settings-container child-control-width='true' child-expand-width='true' spacing='0' pad='0'>
+  <!-- MapMemo/MemoEdit.bsml と同じ構造: 縦レイアウトの中に
+       「ヘッダー行」「タブ選択(高さ明示のラッパー)」「タブ本体(高さ明示のラッパー)」を積む。
+       タブを bg 直下に全画面アンカーで置くと選択が効かなかったため、この方式にする。 -->
+  <vertical spacing='1' pad='1' align='TopCenter' pref-width='110'>
 
-    <!-- Header -->
-    <horizontal spacing='1' pad='0' pad-top='1'>
-      <text text='LRCounter' font-size='5' color='#FFFFFF' />
+    <!-- ───── 常時表示ヘッダー（タブの外）: Enabled / Reset ───── -->
+    <horizontal spacing='4' pref-height='8' horizontal-fit='PreferredSize'>
+      <!-- MOD全体の有効/無効。OFFにすると一切表示しない -->
+      <toggle-setting text='Enabled'
+                      value='enabled'
+                      apply-on-change='true'
+                      bind-value='true'
+                      pref-width='45'
+                      hover-hint='Enable or disable the mod.' />
+      <!-- 全設定を既定値に戻す -->
+      <button text='Reset All Settings'
+              on-click='reset-settings'
+              pref-width='34'
+              hover-hint='Reset all settings to their defaults.' />
     </horizontal>
 
-    <!-- MOD全体の有効/無効。OFFにすると一切表示しない -->
-    <toggle-setting text='Enabled'
-                    value='enabled'
-                    apply-on-change='true'
-                    bind-value='true'
-                    hover-hint='Enable or disable the mod.' />
+    <!-- ───── タブ切り替え（Basic / Color / Sound） ───── -->
+    <vertical pref-height='8' pref-width='60'>
+      <tab-select tab-tag='lr-tabs' size-delta-y='8' child-expand-width='true' />
+    </vertical>
 
-    <!-- ───────── Bar Range (譜面ごとに切り替えやすいよう最上部に配置) ───────── -->
-    <horizontal spacing='1' pad='0' pad-top='1'>
-      <text text='[Bar Range]' color='#7CFC00' />
-    </horizontal>
+    <!-- ───── タブ本体（高さ・幅を明示したラッパーの中に置く。幅が無いと中身が潰れて見えない） ───── -->
+    <vertical pref-height='58' pref-width='110'>
 
-    <!-- 精度バー下端にマッピングする精度(%)。左右矢印で 90/80/50/0 を切り替え -->
-    <list-setting text='Acc Min (Bottom)'
-                    value='acc-min'
-                    options='acc-min-options'
-                    apply-on-change='true'
-                    bind-value='true'
-                    hover-hint='Accuracy (%) mapped to the bottom of the accuracy bar. Lower = wider range shown.' />
+      <!-- ───────────────────── Basic タブ ───────────────────── -->
+      <tab tags='lr-tabs' tab-name='Basic'>
+        <settings-container child-control-width='true' child-expand-width='true' spacing='0' pad='0'>
 
-    <!-- ───────── Common ───────── -->
-    <horizontal spacing='1' pad='0' pad-top='1'>
-      <text text='[Common]' color='#00FFFF' />
-    </horizontal>
+          <!-- ───────── Bar Range (譜面ごとに切り替えやすいよう最上部に配置) ───────── -->
+          <horizontal spacing='1' pad='0' pad-top='1'>
+            <text text='[Bar Range]' color='#7CFC00' />
+          </horizontal>
 
-    <!-- 表示全体をプレイヤー側へ寄せる距離(m)。大きいほど手前=大きく/3Dオブジェクトより前面に出る -->
-    <increment-setting text='Depth (Z)'
-                    value='depth-z'
-                    apply-on-change='true'
-                    bind-value='true'
-                    min='-5' max='5' increment='0.1'
-                    hover-hint='How far the whole display is pulled toward the player (meters). Larger = closer / bigger / in front of 3D objects.' />
+          <!-- 精度バー下端にマッピングする精度(%)。左右矢印で 90/80/50/0 を切り替え -->
+          <list-setting text='Acc Min (Bottom)'
+                          value='acc-min'
+                          options='acc-min-options'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Accuracy (%) mapped to the bottom of the accuracy bar. Lower = wider range shown.' />
 
-    <!-- 配置の基準。ON=環境非依存の固定（既定）／OFF=ゲームHUDに追従（環境オーバーライド譜面でズレうる） -->
-    <toggle-setting text='Fixed Placement'
-                    value='fixed-placement'
-                    apply-on-change='true'
-                    bind-value='true'
-                    hover-hint='ON: keep LRCounter at a fixed position/scale regardless of environment. OFF: follow the game HUD (shifts on maps that override the environment).' />
+          <!-- ───────── Common ───────── -->
+          <horizontal spacing='1' pad='0' pad-top='1'>
+            <text text='[Common]' color='#00FFFF' />
+          </horizontal>
 
-    <!-- 各バーの%・点数ラベルのフォントサイズ(合算ラベルを除く) -->
-    <increment-setting text='Text Size'
-                    value='text-size'
-                    apply-on-change='true'
-                    bind-value='true'
-                    min='1' max='10' increment='0.5'
-                    hover-hint='Font size of the labels.' />
+          <!-- 表示全体をプレイヤー側へ寄せる距離(m)。大きいほど手前=大きく/3Dオブジェクトより前面に出る -->
+          <increment-setting text='Depth (Z)'
+                          value='depth-z'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='-5' max='5' increment='0.1'
+                          hover-hint='How far the whole display is pulled toward the player (meters). Larger = closer / bigger / in front of 3D objects.' />
 
-    <!-- ───────── Total Label (combined %/PP) ───────── -->
-    <horizontal spacing='1' pad='0' pad-top='1'>
-      <text text='[Total Label]' color='#FFD700' />
-    </horizontal>
+          <!-- 配置の基準。ON=環境非依存の固定（既定）／OFF=ゲームHUDに追従（環境オーバーライド譜面でズレうる） -->
+          <toggle-setting text='Fixed Placement'
+                          value='fixed-placement'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='ON: keep LRCounter at a fixed position/scale regardless of environment. OFF: follow the game HUD (shifts on maps that override the environment).' />
 
-    <!-- 中央上部の合算ラベル(左右合計の精度/PP)の表示ON/OFF -->
-    <toggle-setting text='Enable'
-                    value='show-total-label'
-                    apply-on-change='true'
-                    bind-value='true'
-                    hover-hint='Show/hide the combined accuracy/PP label.' />
+          <!-- 各バーの%・点数ラベルのフォントサイズ(合算ラベルを除く) -->
+          <increment-setting text='Text Size'
+                          value='text-size'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='1' max='10' increment='0.5'
+                          hover-hint='Font size of the labels.' />
 
-    <!-- 合算ラベルの水平中心位置(0=左端, 0.5=中央, 1=右端) -->
-    <increment-setting text='X'
-                    value='total-x'
-                    apply-on-change='true'
-                    bind-value='true'
-                    min='0' max='1' increment='0.01'
-                    hover-hint='Horizontal center of the combined accuracy/PP label.' />
+          <!-- ───────── Total Label (combined %/PP) ───────── -->
+          <horizontal spacing='1' pad='0' pad-top='1'>
+            <text text='[Total Label]' color='#FFD700' />
+          </horizontal>
 
-    <!-- 合算ラベルの垂直位置(大きいほど上) -->
-    <increment-setting text='Y'
-                    value='total-y'
-                    apply-on-change='true'
-                    bind-value='true'
-                    min='0' max='1.3' increment='0.01'
-                    hover-hint='Vertical position of the combined label (higher = upper).' />
+          <!-- 中央上部の合算ラベル(左右合計の精度/PP)の表示ON/OFF -->
+          <toggle-setting text='Enable'
+                          value='show-total-label'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Show/hide the combined accuracy/PP label.' />
 
-    <!-- 合算ラベル(PP・%)のフォントサイズ -->
-    <increment-setting text='Size'
-                    value='total-size'
-                    apply-on-change='true'
-                    bind-value='true'
-                    min='1' max='10' increment='0.5'
-                    hover-hint='Font size of the combined label (PP and %).' />
+          <!-- 合算ラベルの水平中心位置(0=左端, 0.5=中央, 1=右端) -->
+          <increment-setting text='X'
+                          value='total-x'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='0' max='1' increment='0.01'
+                          hover-hint='Horizontal center of the combined accuracy/PP label.' />
 
-    <!-- ───────── Accuracy Bar (outer) ───────── -->
-    <horizontal spacing='1' pad='0' pad-top='1'>
-      <text text='[Accuracy Bar]' color='#88CCFF' />
-    </horizontal>
+          <!-- 合算ラベルの垂直位置(大きいほど上) -->
+          <increment-setting text='Y'
+                          value='total-y'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='0' max='1.3' increment='0.01'
+                          hover-hint='Vertical position of the combined label (higher = upper).' />
 
-    <!-- 外側の精度バーの表示ON/OFF -->
-    <toggle-setting text='Enable'
-                    value='show-acc-bar'
-                    apply-on-change='true'
-                    bind-value='true'
-                    hover-hint='Show/hide the accuracy bars.' />
+          <!-- 合算ラベル(PP・%)のフォントサイズ -->
+          <increment-setting text='Size'
+                          value='total-size'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='1' max='10' increment='0.5'
+                          hover-hint='Font size of the combined label (PP and %).' />
 
-    <!-- バー上の精度(%)ラベルの表示ON/OFF -->
-    <toggle-setting text='Acc Label'
-                    value='show-bar-acc-label'
-                    apply-on-change='true'
-                    bind-value='true'
-                    hover-hint='Show/hide the accuracy (%) label above each bar.' />
+          <!-- ───────── Accuracy Bar (outer) ───────── -->
+          <horizontal spacing='1' pad='0' pad-top='1'>
+            <text text='[Accuracy Bar]' color='#88CCFF' />
+          </horizontal>
 
-    <!-- バー上のPPラベルの表示ON/OFF -->
-    <toggle-setting text='PP Label'
-                    value='show-bar-pp-label'
-                    apply-on-change='true'
-                    bind-value='true'
-                    hover-hint='Show/hide the PP label above each bar.' />
+          <!-- 外側の精度バーの表示ON/OFF -->
+          <toggle-setting text='Enable'
+                          value='show-acc-bar'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Show/hide the accuracy bars.' />
 
-    <!-- バー下に「この手のベスト精度」を半透明で表示するON/OFF -->
-    <toggle-setting text='Hand Best Label'
-                    value='show-hand-best-label'
-                    apply-on-change='true'
-                    bind-value='true'
-                    hover-hint='Show this hand&apos;s best accuracy below each bar (semi-transparent).' />
+          <!-- バー上の精度(%)ラベルの表示ON/OFF -->
+          <toggle-setting text='Acc Label'
+                          value='show-bar-acc-label'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Show/hide the accuracy (%) label above each bar.' />
 
-    <!-- 片手ベスト精度ラベルのフォントサイズ（バー上のラベルとは独立） -->
-    <increment-setting text='Hand Best Size'
-                    value='hand-best-size'
-                    apply-on-change='true'
-                    bind-value='true'
-                    min='1' max='10' increment='0.5'
-                    hover-hint='Font size of the hand-best accuracy label below the bars.' />
+          <!-- バー上のPPラベルの表示ON/OFF -->
+          <toggle-setting text='PP Label'
+                          value='show-bar-pp-label'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Show/hide the PP label above each bar.' />
 
-    <!-- ノーツヒット時の赤フラッシュが消えるまでの秒数 -->
-    <increment-setting text='Flash Duration'
-                    value='flash-duration'
-                    apply-on-change='true'
-                    bind-value='true'
-                    min='0' max='2' increment='0.1'
-                    hover-hint='Seconds until the hit flash fades out.' />
+          <!-- バー下に「この手のベスト精度」を半透明で表示するON/OFF -->
+          <toggle-setting text='Hand Best Label'
+                          value='show-hand-best-label'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Show this hand&apos;s best accuracy below each bar (semi-transparent).' />
 
-    <!-- 中央(0.5)を起点とした左右精度バーの間隔。大きいほど左右に広がる -->
-    <increment-setting text='Spacing'
-                    value='acc-spacing'
-                    apply-on-change='true'
-                    bind-value='true'
-                    min='0' max='1' increment='0.01'
-                    hover-hint='Gap between the left/right accuracy bars, centered on the screen. Larger = farther apart.' />
+          <!-- 片手ベスト精度ラベルのフォントサイズ（バー上のラベルとは独立） -->
+          <increment-setting text='Hand Best Size'
+                          value='hand-best-size'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='1' max='10' increment='0.5'
+                          hover-hint='Font size of the hand-best accuracy label below the bars.' />
 
-    <!-- 精度バー下端の垂直位置(大きいほど上) -->
-    <increment-setting text='Y (Bottom)'
-                    value='acc-y'
-                    apply-on-change='true'
-                    bind-value='true'
-                    min='-0.5' max='1.5' increment='0.01'
-                    hover-hint='Vertical position of the bar bottom (higher = upper).' />
+          <!-- ノーツヒット時の赤フラッシュが消えるまでの秒数 -->
+          <increment-setting text='Flash Duration'
+                          value='flash-duration'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='0' max='2' increment='0.1'
+                          hover-hint='Seconds until the hit flash fades out.' />
 
-    <!-- 精度バーの高さ -->
-    <increment-setting text='Height'
-                    value='acc-height'
-                    apply-on-change='true'
-                    bind-value='true'
-                    min='0.05' max='1.5' increment='0.01'
-                    hover-hint='Bar height.' />
+          <!-- 中央(0.5)を起点とした左右精度バーの間隔。大きいほど左右に広がる -->
+          <increment-setting text='Spacing'
+                          value='acc-spacing'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='0' max='1' increment='0.01'
+                          hover-hint='Gap between the left/right accuracy bars, centered on the screen. Larger = farther apart.' />
 
-    <!-- 精度バーの幅(太さ) -->
-    <increment-setting text='Width'
-                    value='acc-width'
-                    apply-on-change='true'
-                    bind-value='true'
-                    min='0.01' max='0.1' increment='0.01'
-                    hover-hint='Bar width (thickness).' />
+          <!-- 精度バー下端の垂直位置(大きいほど上) -->
+          <increment-setting text='Y (Bottom)'
+                          value='acc-y'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='-0.5' max='1.5' increment='0.01'
+                          hover-hint='Vertical position of the bar bottom (higher = upper).' />
 
-    <!-- ───────── Colors (精度バーの11段階。上端=原色/下端=淡い) ───────── -->
-    <horizontal spacing='1' pad='0' pad-top='1'>
-      <text text='[Colors]' color='#FF80BF' />
-    </horizontal>
+          <!-- 精度バーの高さ -->
+          <increment-setting text='Height'
+                          value='acc-height'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='0.05' max='1.5' increment='0.01'
+                          hover-hint='Bar height.' />
 
-    <color-setting text='100% (Perfect)' value='color-10' apply-on-change='true' bind-value='true' hover-hint='Color shown only on a perfect 100%.' />
-    <color-setting text='99%'             value='color-09' apply-on-change='true' bind-value='true' />
-    <color-setting text='98%'             value='color-08' apply-on-change='true' bind-value='true' />
-    <color-setting text='97%'             value='color-07' apply-on-change='true' bind-value='true' />
-    <color-setting text='96%'             value='color-06' apply-on-change='true' bind-value='true' />
-    <color-setting text='95%'             value='color-05' apply-on-change='true' bind-value='true' />
-    <color-setting text='90-94%'          value='color-04' apply-on-change='true' bind-value='true' />
-    <color-setting text='80-89%'          value='color-03' apply-on-change='true' bind-value='true' />
-    <color-setting text='70-79%'          value='color-02' apply-on-change='true' bind-value='true' />
-    <color-setting text='50-69%'          value='color-01' apply-on-change='true' bind-value='true' />
-    <color-setting text='0-49%'           value='color-00' apply-on-change='true' bind-value='true' />
+          <!-- 精度バーの幅(太さ) -->
+          <increment-setting text='Width'
+                          value='acc-width'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='0.01' max='0.1' increment='0.01'
+                          hover-hint='Bar width (thickness).' />
 
-    <!-- ───────── Border (閾値の枠) ───────── -->
-    <horizontal spacing='1' pad='0' pad-top='1'>
-      <text text='[Border]' color='#00CCFF' />
-    </horizontal>
+          <!-- 下が切れるのでスペーサー -->
+          <button text='' pref-width='15' pref-height='10' interactable='false' />
 
-    <!-- PP取得ライン(白いライン)超え時の枠色 -->
-    <color-setting text='PP Line'
-                    value='border-color-pp'
-                    apply-on-change='true'
-                    bind-value='true'
-                    hover-hint='Border color when the total PP exceeds the PP acquisition line.' />
+        </settings-container>
+      </tab>
 
-    <!-- 両手(合算)の自己ベスト精度更新時の枠色 -->
-    <color-setting text='Score Update'
-                    value='border-color-score-update'
-                    apply-on-change='true'
-                    bind-value='true'
-                    hover-hint='Border color when the combined (both hands) accuracy beats your self-best.' />
+      <!-- ───────────────────── Color タブ ───────────────────── -->
+      <tab tags='lr-tabs' tab-name='Color'>
+        <settings-container child-control-width='true' child-expand-width='true' spacing='0' pad='0'>
 
-    <!-- 片手の自己ベスト精度更新時の枠色（その手だけ点灯） -->
-    <color-setting text='Hand Best'
-                    value='border-color-hand-best'
-                    apply-on-change='true'
-                    bind-value='true'
-                    hover-hint='Border color when a single hand beats its own self-best accuracy (lights that hand only).' />
+          <!-- ───────── Colors (精度バーの11段階。上端=原色/下端=淡い) ───────── -->
+          <horizontal spacing='1' pad='0' pad-top='1'>
+            <text text='[Colors]' color='#FF80BF' />
+          </horizontal>
 
-    <!-- 全設定を既定値に戻す -->
-    <button text='Reset All Settings'
-            on-click='reset-settings'
-            hover-hint='Reset all settings to their defaults.' />
+          <color-setting text='100% (Perfect)' value='color-10' apply-on-change='true' bind-value='true' hover-hint='Color shown only on a perfect 100%.' />
+          <color-setting text='99%'             value='color-09' apply-on-change='true' bind-value='true' />
+          <color-setting text='98%'             value='color-08' apply-on-change='true' bind-value='true' />
+          <color-setting text='97%'             value='color-07' apply-on-change='true' bind-value='true' />
+          <color-setting text='96%'             value='color-06' apply-on-change='true' bind-value='true' />
+          <color-setting text='95%'             value='color-05' apply-on-change='true' bind-value='true' />
+          <color-setting text='90-94%'          value='color-04' apply-on-change='true' bind-value='true' />
+          <color-setting text='80-89%'          value='color-03' apply-on-change='true' bind-value='true' />
+          <color-setting text='70-79%'          value='color-02' apply-on-change='true' bind-value='true' />
+          <color-setting text='50-69%'          value='color-01' apply-on-change='true' bind-value='true' />
+          <color-setting text='0-49%'           value='color-00' apply-on-change='true' bind-value='true' />
 
-    <!-- 下が切れるのでスペーサー -->
-    <button text='' pref-width='15' pref-height='10' interactable='false' />
+          <!-- ───────── Border (閾値の枠) ───────── -->
+          <horizontal spacing='1' pad='0' pad-top='1'>
+            <text text='[Border]' color='#00CCFF' />
+          </horizontal>
 
-  </settings-container>
+          <!-- PP取得ライン(白いライン)超え時の枠色 -->
+          <color-setting text='PP Line'
+                          value='border-color-pp'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Border color when the total PP exceeds the PP acquisition line.' />
+
+          <!-- 両手(合算)の自己ベスト精度更新時の枠色 -->
+          <color-setting text='Score Update'
+                          value='border-color-score-update'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Border color when the combined (both hands) accuracy beats your self-best.' />
+
+          <!-- 片手の自己ベスト精度更新時の枠色（その手だけ点灯） -->
+          <color-setting text='Hand Best'
+                          value='border-color-hand-best'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Border color when a single hand beats its own self-best accuracy (lights that hand only).' />
+
+          <!-- 下が切れるのでスペーサー -->
+          <button text='' pref-width='15' pref-height='10' interactable='false' />
+
+        </settings-container>
+      </tab>
+
+      <!-- ───────────────────── Sound タブ ───────────────────── -->
+      <tab tags='lr-tabs' tab-name='Sound'>
+        <settings-container child-control-width='true' child-expand-width='true' spacing='0' pad='0'>
+
+          <!-- ───────── Drop Sound (精度低下・低スコア時のビープ音) ───────── -->
+          <horizontal spacing='1' pad='0' pad-top='1'>
+            <text text='[Drop Sound]' color='#FFA07A' />
+          </horizontal>
+
+          <!-- 精度低下時に鳴らすON/OFF（フラッシュと同じタイミング） -->
+          <toggle-setting text='On Accuracy Drop'
+                          value='drop-sound-acc-enabled'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Play a beep when accuracy drops (same timing as the flash).' />
+
+          <!-- 音を鳴らす精度低下量の閾値(%)。前回比でこの値以上下がったときだけ鳴る -->
+          <increment-setting text='Accuracy Drop Threshold (%)'
+                          value='drop-sound-threshold'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='0' max='5' increment='0.05'
+                          hover-hint='Minimum accuracy drop (%) required to play the beep. 0 = any drop.' />
+
+          <!-- カットスコアが閾値未満のときに鳴らすON/OFF -->
+          <toggle-setting text='On Low Score'
+                          value='drop-sound-score-enabled'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Play a beep when a cut scores below the score threshold.' />
+
+          <!-- カットスコアがこの値を下回ったら鳴らす(例:110→109点以下) -->
+          <increment-setting text='Score Threshold'
+                          value='drop-sound-score-threshold'
+                          apply-on-change='true'
+                          bind-value='true'
+                          integer-only='true'
+                          min='1' max='115' increment='1'
+                          hover-hint='Beep when a cut scores below this value (e.g. 110 = beep at 109 or less).' />
+
+          <!-- サウンドの音量 -->
+          <increment-setting text='Volume'
+                          value='drop-sound-volume'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='0' max='1' increment='0.05'
+                          hover-hint='Volume of the beep.' />
+
+          <!-- 左手ビープの周波数(Hz) -->
+          <increment-setting text='Left Beep (Hz)'
+                          value='drop-sound-left-freq'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='100' max='1000' increment='10'
+                          hover-hint='Beep frequency (Hz) for the left hand.' />
+
+          <!-- 右手ビープの周波数(Hz) -->
+          <increment-setting text='Right Beep (Hz)'
+                          value='drop-sound-right-freq'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='100' max='1000' increment='10'
+                          hover-hint='Beep frequency (Hz) for the right hand.' />
+
+        </settings-container>
+      </tab>
+
+    </vertical>
+  </vertical>
 </bg>
