@@ -1,6 +1,7 @@
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.ViewControllers;
 using LRCounter.Configuration;
+using LRCounter.Controllers.Gameplay;
 using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
@@ -137,6 +138,65 @@ namespace LRCounter.Controllers.Settings
         {
             get => _config.DropSoundScoreThreshold;
             set { _config.DropSoundScoreThreshold = value; _config.Changed(); }
+        }
+
+        // ———— サウンド選択（beep + UserData/LRCounter のカスタムファイル） ————
+        // ドロップダウンの選択肢。ビュー生成時に UserData/LRCounter フォルダを走査する
+        [UIValue("sound-options")]
+        public List<object> SoundOptions { get; } = BuildSoundOptions();
+
+        private static List<object> BuildSoundOptions()
+        {
+            var options = new List<object> { DropSoundPlayer.BeepClipName };
+            foreach (var name in DropSoundPlayer.GetCustomSoundNames())
+                options.Add(name);
+            return options;
+        }
+
+        [UIValue("drop-sound-left-clip")]
+        public string DropSoundLeftClip
+        {
+            get => _config.DropSoundLeftClip;
+            set { _config.DropSoundLeftClip = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-right-clip")]
+        public string DropSoundRightClip
+        {
+            get => _config.DropSoundRightClip;
+            set { _config.DropSoundRightClip = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-left-pitch")]
+        public float DropSoundLeftPitch
+        {
+            get => _config.DropSoundLeftPitch;
+            set { _config.DropSoundLeftPitch = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-right-pitch")]
+        public float DropSoundRightPitch
+        {
+            get => _config.DropSoundRightPitch;
+            set { _config.DropSoundRightPitch = value; _config.Changed(); }
+        }
+
+        // ———— テスト再生 ————
+        // 実際の再生と同じ DropSoundPlayer を使い、現在の設定（クリップ・音量・周波数・ピッチ）で鳴らす
+        private DropSoundPlayer? _testPlayer;
+
+        [UIAction("test-left")]
+        public void TestLeftSound()
+        {
+            _testPlayer ??= new DropSoundPlayer(_config);
+            _testPlayer.Play(isLeft: true);
+        }
+
+        [UIAction("test-right")]
+        public void TestRightSound()
+        {
+            _testPlayer ??= new DropSoundPlayer(_config);
+            _testPlayer.Play(isLeft: false);
         }
 
         // ———— Shared depth ————
@@ -343,6 +403,10 @@ namespace LRCounter.Controllers.Settings
             _config.DropSoundRightFrequency = d.DropSoundRightFrequency;
             _config.DropSoundThreshold = d.DropSoundThreshold;
             _config.DropSoundScoreThreshold = d.DropSoundScoreThreshold;
+            _config.DropSoundLeftClip = d.DropSoundLeftClip;
+            _config.DropSoundRightClip = d.DropSoundRightClip;
+            _config.DropSoundLeftPitch = d.DropSoundLeftPitch;
+            _config.DropSoundRightPitch = d.DropSoundRightPitch;
             _config.DepthZ = d.DepthZ;
             _config.AccBarSpacing = d.AccBarSpacing;
             _config.AccBarY = d.AccBarY;
@@ -385,6 +449,10 @@ namespace LRCounter.Controllers.Settings
             NotifyPropertyChanged(nameof(DropSoundRightFrequency));
             NotifyPropertyChanged(nameof(DropSoundThreshold));
             NotifyPropertyChanged(nameof(DropSoundScoreThreshold));
+            NotifyPropertyChanged(nameof(DropSoundLeftClip));
+            NotifyPropertyChanged(nameof(DropSoundRightClip));
+            NotifyPropertyChanged(nameof(DropSoundLeftPitch));
+            NotifyPropertyChanged(nameof(DropSoundRightPitch));
             NotifyPropertyChanged(nameof(DepthZ));
             NotifyPropertyChanged(nameof(AccBarSpacing));
             NotifyPropertyChanged(nameof(AccBarY));
