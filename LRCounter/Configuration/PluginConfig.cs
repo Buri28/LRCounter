@@ -53,7 +53,12 @@ namespace LRCounter.Configuration
         public virtual bool DropSoundScoreEnabled { get; set; } = false;    // カットスコアが閾値未満で鳴らすON/OFF
         public virtual float DropSoundVolume { get; set; } = 1.0f;     // 音量(0〜1)
         public virtual float DropSoundLeftFrequency { get; set; } = 220f;   // 左手用ビープ周波数(Hz)。低めの音が既定
-        public virtual float DropSoundRightFrequency { get; set; } = 880f;  // 右手用ビープ周波数(Hz)。左より高めで聞き分けやすく
+        public virtual float DropSoundRightFrequency { get; set; } = 660f;  // 右手用ビープ周波数(Hz)。左より高めで聞き分けやすく
+        // 再生するサウンド。"beep"=生成ビープ音／それ以外=UserData/LRCounter/Sound 内のファイル名(拡張子なし、wav/ogg/mp3)
+        public virtual string DropSoundLeftClip { get; set; } = "beep";
+        public virtual string DropSoundRightClip { get; set; } = "beep";
+        public virtual float DropSoundLeftPitch { get; set; } = 1.0f;   // 左手サウンドのピッチ(0.5〜2.0)
+        public virtual float DropSoundRightPitch { get; set; } = 1.0f;  // 右手サウンドのピッチ(0.5〜2.0)
         public virtual float DropSoundThreshold { get; set; } = 0.1f;  // 音を鳴らす精度低下量の閾値(%)。前回比でこの値以上下がったときだけ鳴る(0=少しでも下がれば鳴る)
         public virtual int DropSoundScoreThreshold { get; set; } = 110;  // カットスコア(0〜115)がこの値を下回ったら鳴らす(例:110→109点以下で鳴る)
 

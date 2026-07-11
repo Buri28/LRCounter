@@ -297,21 +297,78 @@
                           min='0' max='1' increment='0.05'
                           hover-hint='Volume of the beep.' />
 
-          <!-- 左手ビープの周波数(Hz) -->
+          <!-- ───────── Left Hand ───────── -->
+          <horizontal spacing='1' pad='0' pad-top='1'>
+            <text text='[Left Hand]' color='#FF6060' />
+          </horizontal>
+
+          <!-- 左手のサウンド。beep=生成ビープ音／それ以外=UserData/LRCounter/Sound のファイル(wav/ogg/mp3) -->
+          <dropdown-list-setting text='Left Sound'
+                          value='drop-sound-left-clip'
+                          options='sound-options'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Sound for the left hand. "beep" = generated tone. Put wav/ogg/mp3 files in UserData/LRCounter/Sound to use custom sounds.' />
+
+          <!-- 左手ビープの周波数(Hz)。beep選択時のみ有効 -->
           <increment-setting text='Left Beep (Hz)'
                           value='drop-sound-left-freq'
                           apply-on-change='true'
                           bind-value='true'
                           min='100' max='1000' increment='10'
-                          hover-hint='Beep frequency (Hz) for the left hand.' />
+                          hover-hint='Beep frequency (Hz) for the left hand (used when "beep" is selected).' />
 
-          <!-- 右手ビープの周波数(Hz) -->
+          <!-- 左手サウンドのピッチ(0.5〜2.0) -->
+          <slider-setting text='Left Pitch'
+                          value='drop-sound-left-pitch'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='0.5' max='2' increment='0.05'
+                          hover-hint='Playback pitch for the left-hand sound.' />
+
+          <!-- ───────── Right Hand ───────── -->
+          <horizontal spacing='1' pad='0' pad-top='1'>
+            <text text='[Right Hand]' color='#6090FF' />
+          </horizontal>
+
+          <!-- 右手のサウンド。beep=生成ビープ音／それ以外=UserData/LRCounter/Sound のファイル(wav/ogg/mp3) -->
+          <dropdown-list-setting text='Right Sound'
+                          value='drop-sound-right-clip'
+                          options='sound-options'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Sound for the right hand. "beep" = generated tone. Put wav/ogg/mp3 files in UserData/LRCounter/Sound to use custom sounds.' />
+
+          <!-- 右手ビープの周波数(Hz)。beep選択時のみ有効 -->
           <increment-setting text='Right Beep (Hz)'
                           value='drop-sound-right-freq'
                           apply-on-change='true'
                           bind-value='true'
                           min='100' max='1000' increment='10'
-                          hover-hint='Beep frequency (Hz) for the right hand.' />
+                          hover-hint='Beep frequency (Hz) for the right hand (used when "beep" is selected).' />
+
+          <!-- 右手サウンドのピッチ(0.5〜2.0) -->
+          <slider-setting text='Right Pitch'
+                          value='drop-sound-right-pitch'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='0.5' max='2' increment='0.05'
+                          hover-hint='Playback pitch for the right-hand sound.' />
+
+          <!-- テスト再生（現在の設定で左右それぞれ鳴らす） -->
+          <horizontal spacing='4' pad-top='1' horizontal-fit='PreferredSize'>
+            <button text='Test Left'
+                    on-click='test-left'
+                    pref-width='30'
+                    hover-hint='Play the left-hand sound with the current settings.' />
+            <button text='Test Right'
+                    on-click='test-right'
+                    pref-width='30'
+                    hover-hint='Play the right-hand sound with the current settings.' />
+          </horizontal>
+
+          <!-- 下が切れるのでスペーサー -->
+          <button text='' pref-width='15' pref-height='10' interactable='false' />
 
         </settings-container>
       </tab>

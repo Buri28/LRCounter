@@ -37,6 +37,15 @@
       <HintPath>$(BeatSaberManagedPath)\UnityEngine.AudioModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <!-- カスタムサウンド読み込み（UnityWebRequestMultimedia） -->
+    <Reference Include="UnityEngine.UnityWebRequestModule">
+      <HintPath>$(BeatSaberManagedPath)\UnityEngine.UnityWebRequestModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UnityWebRequestAudioModule">
+      <HintPath>$(BeatSaberManagedPath)\UnityEngine.UnityWebRequestAudioModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="UnityEngine.UIModule">
       <HintPath>$(BeatSaberManagedPath)\UnityEngine.UIModule.dll</HintPath>
       <Private>False</Private>
