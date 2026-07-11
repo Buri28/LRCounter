@@ -20,7 +20,7 @@
               hover-hint='Reset all settings to their defaults.' />
     </horizontal>
 
-    <!-- ───── タブ切り替え（Basic / Color / Sound） ───── -->
+    <!-- ───── タブ切り替え（General / Color / Sound） ───── -->
     <vertical pref-height='8' pref-width='60'>
       <tab-select tab-tag='lr-tabs' size-delta-y='8' child-expand-width='true' />
     </vertical>
@@ -28,8 +28,8 @@
     <!-- ───── タブ本体（高さ・幅を明示したラッパーの中に置く。幅が無いと中身が潰れて見えない） ───── -->
     <vertical pref-height='58' pref-width='110'>
 
-      <!-- ───────────────────── Basic タブ ───────────────────── -->
-      <tab tags='lr-tabs' tab-name='Basic'>
+      <!-- ───────────────────── General タブ ───────────────────── -->
+      <tab tags='lr-tabs' tab-name='General'>
         <settings-container child-control-width='true' child-expand-width='true' spacing='0' pad='0'>
 
           <!-- ───────── Bar Range (譜面ごとに切り替えやすいよう最上部に配置) ───────── -->
