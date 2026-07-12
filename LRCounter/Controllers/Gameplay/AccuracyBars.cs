@@ -1,6 +1,8 @@
 using BeatSaberMarkupLanguage;
 using LRCounter.Configuration;
 using LRCounter.Models;
+using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -49,6 +51,13 @@ namespace LRCounter.Controllers.Gameplay
         // 低スコアカット検知用: 前回見た CutScoreSerial（新しいカットが来たかの判定）
         private int _leftPrevCutSerial;
         private int _rightPrevCutSerial;
+        // 連発抑制用: その手で直近に発火(鳴る条件を満たした)したノーツ番号の履歴。
+        // 抑制中に発火したぶんも記録し、直近10ノーツの発火が閾値未満に戻るまで鳴らさない
+        private readonly Queue<int> _leftRecentTriggers = new Queue<int>();
+        private readonly Queue<int> _rightRecentTriggers = new Queue<int>();
+        // 現在その手が抑制中か。抑制に入った瞬間(false→true)だけダブルビープで知らせるためのエッジ検出用
+        private bool _leftSuppressed;
+        private bool _rightSuppressed;
 
         // ─── 閾値の枠（バー外周を縁取る。全面塗りだと塗り色とブレンドして判別しにくいため枠方式） ───
         // 左右独立に点灯する。優先度: 白(PP取得＝合算ThresholdPP超え・両手同時) ＞ 黄(両手の自己ベスト精度
@@ -156,9 +165,9 @@ namespace LRCounter.Controllers.Gameplay
             bool leftLowScore = IsNewLowScoreCut(_tracker.LeftTracker, ref _leftPrevCutSerial);
             bool rightLowScore = IsNewLowScoreCut(_tracker.RightTracker, ref _rightPrevCutSerial);
             if ((accSound && leftDropped && _prevLeftAcc - leftAcc >= soundThreshold) || leftLowScore)
-                _dropSound.Play(isLeft: true);
+                TryPlayDropSound(isLeft: true, _tracker.LeftTracker.TotalNotes, _leftRecentTriggers, ref _leftSuppressed);
             if ((accSound && rightDropped && _prevRightAcc - rightAcc >= soundThreshold) || rightLowScore)
-                _dropSound.Play(isLeft: false);
+                TryPlayDropSound(isLeft: false, _tracker.RightTracker.TotalNotes, _rightRecentTriggers, ref _rightSuppressed);
             _prevLeftAcc = leftAcc;
             _prevRightAcc = rightAcc;
 
@@ -544,6 +553,40 @@ namespace LRCounter.Controllers.Gameplay
 
         // その手で新しいカット（115満点ノーツのみ）があり、そのスコアが設定閾値未満なら true。
         // チェーンノーツはスコアの意味が異なるため対象外（CutScoreSerial が増えない）。
+        // 連発抑制の窓幅（この直近ノーツ数の中で発火回数を数える）
+        private const int SuppressWindowNotes = 10;
+
+        // 鳴らす条件を満たしたときに、序盤の抑制(Warmup)と連発抑制(SuppressCount)を通過したら鳴らす。
+        //   Warmup        … その手の合計ノーツ数が DropSoundWarmupNotes 未満の間は鳴らさない（序盤は精度変動が激しいため）
+        //   SuppressCount … その手の直近10ノーツで DropSoundSuppressCount 回発火していたら鳴らさない。
+        //                   抑制中の発火も履歴に残すので、低下が収まって発火が閾値未満に戻るまで黙り続ける。
+        //                   抑制に入った瞬間だけ「もう精度を気にする余裕はない」の合図としてダブルビープを鳴らす。
+        private void TryPlayDropSound(bool isLeft, int totalNotes, Queue<int> recentTriggers, ref bool suppressedState)
+        {
+            if (totalNotes < _config.DropSoundWarmupNotes) return;
+
+            // 窓の外に出た発火を捨ててから、今回の発火を記録する（同一ノーツの二重記録は避ける）
+            while (recentTriggers.Count > 0 && recentTriggers.Peek() <= totalNotes - SuppressWindowNotes)
+                recentTriggers.Dequeue();
+            int suppressCount = _config.DropSoundSuppressCount;
+            bool suppressed = suppressCount > 0 && recentTriggers.Count >= suppressCount;
+            if (recentTriggers.Count == 0 || recentTriggers.Last() != totalNotes)
+                recentTriggers.Enqueue(totalNotes);
+
+            if (suppressed)
+            {
+                // 抑制の立ち上がり（非抑制→抑制）だけ2回連続で鳴らして知らせ、以降は黙る
+                if (!suppressedState)
+                {
+                    suppressedState = true;
+                    _dropSound.PlayDouble(isLeft);
+                }
+                return;
+            }
+            suppressedState = false;
+            _dropSound.Play(isLeft);
+        }
+
         // シリアルの追従は無効時も行い、有効化直後に過去のカットで鳴らないようにする。
         private bool IsNewLowScoreCut(HandPPTracker tracker, ref int prevSerial)
         {

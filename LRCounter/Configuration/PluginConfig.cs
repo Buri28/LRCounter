@@ -61,6 +61,12 @@ namespace LRCounter.Configuration
         public virtual float DropSoundRightPitch { get; set; } = 1.0f;  // 右手サウンドのピッチ(0.5〜2.0)
         public virtual float DropSoundThreshold { get; set; } = 0.1f;  // 音を鳴らす精度低下量の閾値(%)。前回比でこの値以上下がったときだけ鳴る(0=少しでも下がれば鳴る)
         public virtual int DropSoundScoreThreshold { get; set; } = 110;  // カットスコア(0〜115)がこの値を下回ったら鳴らす(例:110→109点以下で鳴る)
+        // プレイ序盤は精度の変動が激しいため、その手の合計ノーツ数がこの値に達するまでは鳴らさない(0=無効)
+        public virtual int DropSoundWarmupNotes { get; set; } = 10;
+        // 連発抑制: その手の直近10ノーツでこの回数鳴っていたら鳴らすのを止める(0=無効)。
+        // そんなに鳴る状況では精度を気にする余裕がないため、収まるまで黙る。
+        // ほとんど鳴らず「たまに鳴る」くらいが精度低下を意識しやすいので既定は低め(3)
+        public virtual int DropSoundSuppressCount { get; set; } = 3;
 
         // ─── 合算ラベル（左右合計の精度・PPを中央上部に表示） ───────────────
         public virtual bool ShowTotalLabel { get; set; } = true; // 表示ON/OFF
