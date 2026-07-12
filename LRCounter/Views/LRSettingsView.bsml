@@ -289,6 +289,24 @@
                           min='1' max='115' increment='1'
                           hover-hint='Beep when a cut scores below this value (e.g. 110 = beep at 109 or less).' />
 
+          <!-- 序盤の抑制: その手の合計ノーツ数がこの数に達するまでは鳴らさない(0=無効) -->
+          <increment-setting text='Warmup Notes'
+                          value='drop-sound-warmup-notes'
+                          apply-on-change='true'
+                          bind-value='true'
+                          integer-only='true'
+                          min='0' max='50' increment='5'
+                          hover-hint='No sound until this many notes are cut per hand (accuracy is unstable early on). 0 = off.' />
+
+          <!-- 連発抑制: その手の直近10ノーツでこの回数鳴っていたら止める(0=無効) -->
+          <increment-setting text='Suppress After (per 10 notes)'
+                          value='drop-sound-suppress-count'
+                          apply-on-change='true'
+                          bind-value='true'
+                          integer-only='true'
+                          min='0' max='10' increment='1'
+                          hover-hint='Stop the sound while it has fired this many times in the last 10 notes per hand. 0 = off.' />
+
           <!-- サウンドの音量 -->
           <increment-setting text='Volume'
                           value='drop-sound-volume'

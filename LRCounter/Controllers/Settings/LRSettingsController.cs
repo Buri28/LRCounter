@@ -140,6 +140,20 @@ namespace LRCounter.Controllers.Settings
             set { _config.DropSoundScoreThreshold = value; _config.Changed(); }
         }
 
+        [UIValue("drop-sound-warmup-notes")]
+        public int DropSoundWarmupNotes
+        {
+            get => _config.DropSoundWarmupNotes;
+            set { _config.DropSoundWarmupNotes = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-suppress-count")]
+        public int DropSoundSuppressCount
+        {
+            get => _config.DropSoundSuppressCount;
+            set { _config.DropSoundSuppressCount = value; _config.Changed(); }
+        }
+
         // ———— サウンド選択（beep + UserData/LRCounter のカスタムファイル） ————
         // ドロップダウンの選択肢。ビュー生成時に UserData/LRCounter フォルダを走査する
         [UIValue("sound-options")]
@@ -403,6 +417,8 @@ namespace LRCounter.Controllers.Settings
             _config.DropSoundRightFrequency = d.DropSoundRightFrequency;
             _config.DropSoundThreshold = d.DropSoundThreshold;
             _config.DropSoundScoreThreshold = d.DropSoundScoreThreshold;
+            _config.DropSoundWarmupNotes = d.DropSoundWarmupNotes;
+            _config.DropSoundSuppressCount = d.DropSoundSuppressCount;
             _config.DropSoundLeftClip = d.DropSoundLeftClip;
             _config.DropSoundRightClip = d.DropSoundRightClip;
             _config.DropSoundLeftPitch = d.DropSoundLeftPitch;
@@ -449,6 +465,8 @@ namespace LRCounter.Controllers.Settings
             NotifyPropertyChanged(nameof(DropSoundRightFrequency));
             NotifyPropertyChanged(nameof(DropSoundThreshold));
             NotifyPropertyChanged(nameof(DropSoundScoreThreshold));
+            NotifyPropertyChanged(nameof(DropSoundWarmupNotes));
+            NotifyPropertyChanged(nameof(DropSoundSuppressCount));
             NotifyPropertyChanged(nameof(DropSoundLeftClip));
             NotifyPropertyChanged(nameof(DropSoundRightClip));
             NotifyPropertyChanged(nameof(DropSoundLeftPitch));

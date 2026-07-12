@@ -1,5 +1,6 @@
 using LRCounter.Configuration;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -26,6 +27,11 @@ namespace LRCounter.Controllers.Gameplay
         private static AudioClip? _rightClip;
         private static string _leftClipKey = "";
         private static string _rightClipKey = "";
+        // 2回目のビープを遅延再生するためのコルーチン実行役（常駐 GameObject に載せる）
+        private static CoroutineRunner? _runner;
+
+        // 抑制発動時のダブルビープで、2発目までの間隔（秒）。ビープ長(約0.12秒)より少し長め
+        private const float DoubleBeepGap = 0.15f;
 
         // 生成ビープ音を表す設定値（これ以外はUserData/LRCounter/Soundのファイル名として扱う）
         public const string BeepClipName = "beep";
@@ -54,6 +60,8 @@ namespace LRCounter.Controllers.Gameplay
             _audioSource.bypassEffects = false;
             _audioSource.bypassListenerEffects = false;
             _audioSource.bypassReverbZones = false;
+
+            _runner = go.AddComponent<CoroutineRunner>();
         }
 
         // 精度低下フラッシュと同じタイミングで呼ぶ（設定画面のテスト再生からも呼ばれる）。
@@ -95,6 +103,20 @@ namespace LRCounter.Controllers.Gameplay
             _audioSource.pitch = Mathf.Clamp(
                 isLeft ? _config.DropSoundLeftPitch : _config.DropSoundRightPitch, 0.5f, 2.0f);
             _audioSource.PlayOneShot(clip, 1.0f);
+        }
+
+        // 2回連続で鳴らす（連発抑制が発動した合図）。1発目を即時、2発目を少し遅らせて鳴らす。
+        public void PlayDouble(bool isLeft)
+        {
+            Play(isLeft);
+            if (_runner != null) _runner.StartCoroutine(PlaySecond(isLeft));
+            else Play(isLeft);  // ランナーが無い場合は重なるが最低限2発目を試みる
+        }
+
+        private IEnumerator PlaySecond(bool isLeft)
+        {
+            yield return new WaitForSecondsRealtime(DoubleBeepGap);
+            Play(isLeft);
         }
 
         // クリップ名からAudioClipを作る。カスタムファイルの読み込みに失敗したらビープにフォールバック
@@ -221,5 +243,8 @@ namespace LRCounter.Controllers.Gameplay
             clip.SetData(data, 0);
             return clip;
         }
+
+        // 遅延再生用の最小 MonoBehaviour（常駐 GameObject に載せてコルーチンを走らせるためだけの器）
+        private class CoroutineRunner : MonoBehaviour { }
     }
 }
