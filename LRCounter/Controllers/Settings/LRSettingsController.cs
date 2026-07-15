@@ -112,6 +112,13 @@ namespace LRCounter.Controllers.Settings
             set { _config.DropSoundVolume = value; _config.Changed(); }
         }
 
+        [UIValue("drop-sound-stereo-pan")]
+        public bool DropSoundStereoPan
+        {
+            get => _config.DropSoundStereoPan;
+            set { _config.DropSoundStereoPan = value; _config.Changed(); }
+        }
+
         [UIValue("drop-sound-left-freq")]
         public float DropSoundLeftFrequency
         {
@@ -413,6 +420,7 @@ namespace LRCounter.Controllers.Settings
             _config.DropSoundAccuracyEnabled = d.DropSoundAccuracyEnabled;
             _config.DropSoundScoreEnabled = d.DropSoundScoreEnabled;
             _config.DropSoundVolume = d.DropSoundVolume;
+            _config.DropSoundStereoPan = d.DropSoundStereoPan;
             _config.DropSoundLeftFrequency = d.DropSoundLeftFrequency;
             _config.DropSoundRightFrequency = d.DropSoundRightFrequency;
             _config.DropSoundThreshold = d.DropSoundThreshold;
@@ -461,6 +469,7 @@ namespace LRCounter.Controllers.Settings
             NotifyPropertyChanged(nameof(DropSoundAccuracyEnabled));
             NotifyPropertyChanged(nameof(DropSoundScoreEnabled));
             NotifyPropertyChanged(nameof(DropSoundVolume));
+            NotifyPropertyChanged(nameof(DropSoundStereoPan));
             NotifyPropertyChanged(nameof(DropSoundLeftFrequency));
             NotifyPropertyChanged(nameof(DropSoundRightFrequency));
             NotifyPropertyChanged(nameof(DropSoundThreshold));

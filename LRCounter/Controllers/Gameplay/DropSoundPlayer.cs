@@ -20,9 +20,11 @@ namespace LRCounter.Controllers.Gameplay
     {
         private readonly PluginConfig _config;
 
-        // アプリ全体で1つの AudioSource / クリップ（WallHitSound と同じ常駐方式）
-        // クリップは左右で設定が異なるため別々に持つ。キーで設定変更を検知して作り直す
-        private static AudioSource? _audioSource;
+        // アプリ全体で常駐する AudioSource（WallHitSound と同じ常駐方式）。
+        // ステレオパン（左手=左耳のみ/右手=右耳のみ）を左右同時発音でも混ぜないよう、左右別に持つ。
+        // クリップも左右で設定が異なるため別々に持つ。キーで設定変更を検知して作り直す
+        private static AudioSource? _leftSource;
+        private static AudioSource? _rightSource;
         private static AudioClip? _leftClip;
         private static AudioClip? _rightClip;
         private static string _leftClipKey = "";
@@ -49,19 +51,26 @@ namespace LRCounter.Controllers.Gameplay
 
         private static void EnsureAudioSource()
         {
-            if (_audioSource != null) return;
+            if (_leftSource != null && _rightSource != null) return;
 
             var go = new GameObject("LRCounter_DropSound");
             UnityEngine.Object.DontDestroyOnLoad(go);
 
-            _audioSource = go.AddComponent<AudioSource>();
-            _audioSource.playOnAwake = false;
-            _audioSource.spatialBlend = 0.0f;  // 2D音声（位置に依存しない）
-            _audioSource.bypassEffects = false;
-            _audioSource.bypassListenerEffects = false;
-            _audioSource.bypassReverbZones = false;
+            _leftSource = CreateSource(go);
+            _rightSource = CreateSource(go);
 
             _runner = go.AddComponent<CoroutineRunner>();
+        }
+
+        private static AudioSource CreateSource(GameObject go)
+        {
+            var source = go.AddComponent<AudioSource>();
+            source.playOnAwake = false;
+            source.spatialBlend = 0.0f;  // 2D音声（位置に依存しない）
+            source.bypassEffects = false;
+            source.bypassListenerEffects = false;
+            source.bypassReverbZones = false;
+            return source;
         }
 
         // 精度低下フラッシュと同じタイミングで呼ぶ（設定画面のテスト再生からも呼ばれる）。
@@ -69,8 +78,9 @@ namespace LRCounter.Controllers.Gameplay
         public void Play(bool isLeft)
         {
             EnsureAudioSource();
-            if (_audioSource == null) return;
-            if (!_audioSource.enabled) _audioSource.enabled = true;
+            AudioSource? source = isLeft ? _leftSource : _rightSource;
+            if (source == null) return;
+            if (!source.enabled) source.enabled = true;
 
             string clipName = isLeft ? _config.DropSoundLeftClip : _config.DropSoundRightClip;
             float frequency = isLeft ? _config.DropSoundLeftFrequency : _config.DropSoundRightFrequency;
@@ -99,10 +109,12 @@ namespace LRCounter.Controllers.Gameplay
             }
             if (clip == null) return;
 
-            _audioSource.volume = Mathf.Clamp01(_config.DropSoundVolume);
-            _audioSource.pitch = Mathf.Clamp(
+            source.volume = Mathf.Clamp01(_config.DropSoundVolume);
+            source.pitch = Mathf.Clamp(
                 isLeft ? _config.DropSoundLeftPitch : _config.DropSoundRightPitch, 0.5f, 2.0f);
-            _audioSource.PlayOneShot(clip, 1.0f);
+            // ステレオパン: ONなら左手=左耳のみ(-1)/右手=右耳のみ(+1)、OFFなら中央(0)
+            source.panStereo = _config.DropSoundStereoPan ? (isLeft ? -1f : 1f) : 0f;
+            source.PlayOneShot(clip, 1.0f);
         }
 
         // 2回連続で鳴らす（連発抑制が発動した合図）。1発目を即時、2発目を少し遅らせて鳴らす。
