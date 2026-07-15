@@ -27,6 +27,14 @@ namespace LRCounter.Models
         public int    LastCutScore { get; private set; } = -1;  // 直前のカット生スコア（0〜115）、未カット時は-1
         public int    CutScoreSerial { get; private set; } = 0; // LastCutScore が更新されるたびに+1（新しいカットの検知用）
 
+        // この手の115満点ノーツのカットスコア平均（チェーンは除外）。未カット時は-1
+        public double AverageCutScore => _fullCutCount > 0
+            ? (double)_fullCutScoreSum / _fullCutCount
+            : -1;
+
+        private long _fullCutScoreSum = 0; // 115満点ノーツのカットスコア合計
+        private int  _fullCutCount    = 0; // 115満点ノーツのカット数
+
         private double _starRating = 0; // PP計算に使うStar評価（LRTrackerServiceからセットされる）
 
         public HandPPTracker(HandType hand)
@@ -57,6 +65,8 @@ namespace LRCounter.Models
             {
                 LastCutScore = score;
                 CutScoreSerial++;
+                _fullCutScoreSum += score;
+                _fullCutCount++;
             }
             RecalculatePP();
         }
@@ -99,6 +109,8 @@ namespace LRCounter.Models
             PP               = 0;
             LastCutScore     = -1;
             CutScoreSerial   = 0;
+            _fullCutScoreSum = 0;
+            _fullCutCount    = 0;
         }
 
         // 現在のAccuracyとStarRatingからPPを再計算する

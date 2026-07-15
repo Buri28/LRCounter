@@ -551,7 +551,7 @@ namespace LRCounter.Controllers.Gameplay
             accLabel.text = bestAcc > 0 ? $"PB:{bestAcc * 100.0:F1}%" : "";
         }
 
-        // その手で新しいカット（115満点ノーツのみ）があり、そのスコアが設定閾値未満なら true。
+        // その手で新しいカット（115満点ノーツのみ）があり、そのスコアがその手の平均より設定点数以上低ければ true。
         // チェーンノーツはスコアの意味が異なるため対象外（CutScoreSerial が増えない）。
         // 連発抑制の窓幅（この直近ノーツ数の中で発火回数を数える）
         private const int SuppressWindowNotes = 10;
@@ -594,7 +594,8 @@ namespace LRCounter.Controllers.Gameplay
             bool isNew = serial != prevSerial;
             prevSerial = serial;
             return _config.DropSoundScoreEnabled && isNew
-                && tracker.LastCutScore < _config.DropSoundScoreThreshold;
+                && tracker.AverageCutScore >= 0
+                && tracker.LastCutScore < tracker.AverageCutScore - _config.DropSoundScoreThreshold;
         }
 
         // 精度(%)を窓[low, low+幅]で正規化して塗りつぶし量(0〜1)に変換する
