@@ -52,8 +52,10 @@ namespace LRCounter.Configuration
         public virtual bool DropSoundAccuracyEnabled { get; set; } = true;  // 精度低下で鳴らすON/OFF
         public virtual bool DropSoundScoreEnabled { get; set; } = false;    // カットスコアが平均より閾値以上低いときに鳴らすON/OFF
         public virtual float DropSoundVolume { get; set; } = 1.0f;     // 音量(0〜1)
-        public virtual float DropSoundLeftFrequency { get; set; } = 220f;   // 左手用ビープ周波数(Hz)。低めの音が既定
-        public virtual float DropSoundRightFrequency { get; set; } = 660f;  // 右手用ビープ周波数(Hz)。左より高めで聞き分けやすく
+        // ステレオパン: 左手の音を左耳だけ、右手の音を右耳だけに鳴らす（true=ON）
+        public virtual bool DropSoundStereoPan { get; set; } = true;
+        public virtual float DropSoundLeftFrequency { get; set; } = 440f;   // 左手用ビープ周波数(Hz)。低めの音が既定
+        public virtual float DropSoundRightFrequency { get; set; } = 440f;  // 右手用ビープ周波数(Hz)。左より高めで聞き分けやすく
         // 再生するサウンド。"beep"=生成ビープ音／それ以外=UserData/LRCounter/Sound 内のファイル名(拡張子なし、wav/ogg/mp3)
         public virtual string DropSoundLeftClip { get; set; } = "beep";
         public virtual string DropSoundRightClip { get; set; } = "beep";
