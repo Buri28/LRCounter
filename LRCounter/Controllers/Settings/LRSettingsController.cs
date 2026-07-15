@@ -134,7 +134,7 @@ namespace LRCounter.Controllers.Settings
         }
 
         [UIValue("drop-sound-score-threshold")]
-        public int DropSoundScoreThreshold
+        public float DropSoundScoreThreshold
         {
             get => _config.DropSoundScoreThreshold;
             set { _config.DropSoundScoreThreshold = value; _config.Changed(); }

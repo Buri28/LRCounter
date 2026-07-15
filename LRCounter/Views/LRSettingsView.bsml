@@ -278,16 +278,15 @@
                           value='drop-sound-score-enabled'
                           apply-on-change='true'
                           bind-value='true'
-                          hover-hint='Play a beep when a cut scores below the score threshold.' />
+                          hover-hint='Play a beep when a cut scores below that hand&apos;s average by the score threshold.' />
 
-          <!-- カットスコアがこの値を下回ったら鳴らす(例:110→109点以下) -->
-          <increment-setting text='Score Threshold'
+          <!-- その手のカットスコア平均よりこの点数以上低いカットで鳴らす(例:平均110で7なら103未満) -->
+          <increment-setting text='Score Drop'
                           value='drop-sound-score-threshold'
                           apply-on-change='true'
                           bind-value='true'
-                          integer-only='true'
-                          min='1' max='115' increment='1'
-                          hover-hint='Beep when a cut scores below this value (e.g. 110 = beep at 109 or less).' />
+                          min='0.5' max='15' increment='0.5'
+                          hover-hint='Beep when a cut scores below that hand&apos;s average by this many points (e.g. avg 110, 7 = beep below 103).' />
 
           <!-- 序盤の抑制: その手の合計ノーツ数がこの数に達するまでは鳴らさない(0=無効) -->
           <increment-setting text='Warmup Notes'
