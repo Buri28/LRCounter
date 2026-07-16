@@ -334,13 +334,13 @@
                           bind-value='true'
                           hover-hint='Sound for the left hand. "beep" = generated tone. Put wav/ogg/mp3 files in UserData/LRCounter/Sound to use custom sounds.' />
 
-          <!-- 左手ビープの周波数(Hz)。beep選択時のみ有効 -->
-          <increment-setting text='Left Beep (Hz)'
+          <!-- 左手ビープの周波数(Hz)。beep選択時のみ有効。0〜10000Hzで聴力検査ごっこも可能 -->
+          <slider-setting text='Left Beep (Hz)'
                           value='drop-sound-left-freq'
                           apply-on-change='true'
                           bind-value='true'
-                          min='100' max='1000' increment='10'
-                          hover-hint='Beep frequency (Hz) for the left hand (used when "beep" is selected).' />
+                          min='0' max='10000' increment='50'
+                          hover-hint='Beep frequency (Hz) for the left hand (used when "beep" is selected). Goes up to 10000 Hz — hearing test, anyone?' />
 
           <!-- 左手サウンドのピッチ(0.5〜2.0) -->
           <slider-setting text='Left Pitch'
@@ -363,13 +363,13 @@
                           bind-value='true'
                           hover-hint='Sound for the right hand. "beep" = generated tone. Put wav/ogg/mp3 files in UserData/LRCounter/Sound to use custom sounds.' />
 
-          <!-- 右手ビープの周波数(Hz)。beep選択時のみ有効 -->
-          <increment-setting text='Right Beep (Hz)'
+          <!-- 右手ビープの周波数(Hz)。beep選択時のみ有効。0〜10000Hzで聴力検査ごっこも可能 -->
+          <slider-setting text='Right Beep (Hz)'
                           value='drop-sound-right-freq'
                           apply-on-change='true'
                           bind-value='true'
-                          min='100' max='1000' increment='10'
-                          hover-hint='Beep frequency (Hz) for the right hand (used when "beep" is selected).' />
+                          min='0' max='10000' increment='50'
+                          hover-hint='Beep frequency (Hz) for the right hand (used when "beep" is selected). Goes up to 10000 Hz — hearing test, anyone?' />
 
           <!-- 右手サウンドのピッチ(0.5〜2.0) -->
           <slider-setting text='Right Pitch'
