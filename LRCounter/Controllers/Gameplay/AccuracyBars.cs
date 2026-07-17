@@ -1,8 +1,6 @@
 using BeatSaberMarkupLanguage;
 using LRCounter.Configuration;
 using LRCounter.Models;
-using System.Collections.Generic;
-using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -46,19 +44,21 @@ namespace LRCounter.Controllers.Gameplay
         private float _rightFlashEnd = -1f;
         private float FlashDuration => _config.FlashDuration;
 
-        // 精度低下時のサウンド（フラッシュと同じタイミングで鳴らす）
+        // 低スコア・ミス時のサウンド
         private readonly DropSoundPlayer _dropSound;
         // 低スコアカット検知用: 前回見た CutScoreSerial（新しいカットが来たかの判定）
         private int _leftPrevCutSerial;
         private int _rightPrevCutSerial;
-        // 連発抑制用: その手で直近に発火(鳴る条件を満たした)したノーツ番号の履歴。
-        // 抑制中に発火したぶんも記録し、直近10ノーツの発火が閾値未満に戻るまで鳴らさない
-        private readonly Queue<int> _leftRecentTriggers = new Queue<int>();
-        private readonly Queue<int> _rightRecentTriggers = new Queue<int>();
-        // 現在その手が抑制中か。抑制に入った瞬間(false→true)だけダブルビープで知らせるためのエッジ検出用
-        private bool _leftSuppressed;
-        private bool _rightSuppressed;
-
+        // ミス検知用: 前回見たミス+バッドカットの合計数（増えたら新しいミスが来たと判定）
+        private int _leftPrevMissCount;
+        private int _rightPrevMissCount;
+        // 低スコア閾値の自動拡大用: 現在の閾値倍率(x1/x2/x4/x8)と、最後に閾値を下回ってからのカット数。
+        // カット数の初期値は「十分昔」を表す大きな値（曲頭の初回発火で倍率が上がらないようにする）
+        private int _leftScoreThresholdMult = 1;
+        private int _rightScoreThresholdMult = 1;
+        private int _leftCutsSinceLowScore = FarPast;
+        private int _rightCutsSinceLowScore = FarPast;
+        private const int FarPast = 1000;
         // ─── 閾値の枠（バー外周を縁取る。全面塗りだと塗り色とブレンドして判別しにくいため枠方式） ───
         // 左右独立に点灯する。優先度: 白(PP取得＝合算ThresholdPP超え・両手同時) ＞ 黄(両手の自己ベスト精度
         // 更新・両手同時) ＞ 橙(その手の自己ベスト精度更新・その手だけ)。
@@ -152,22 +152,22 @@ namespace LRCounter.Controllers.Gameplay
             double leftAcc = _tracker.LeftTracker.Accuracy * 100;
             double rightAcc = _tracker.RightTracker.Accuracy * 100;
 
-            // 前回より精度が下がっていたらフラッシュ開始。サウンドは低下量(%)が閾値以上のときだけ、
-            // 左右それぞれ別の音で鳴らす（閾値0なら少しでも下がれば鳴る）
+            // 前回より精度が下がっていたらフラッシュ開始（表示のみ。サウンドは低スコア・ミスで鳴らす）
             bool leftDropped = _prevLeftAcc > 0 && leftAcc < _prevLeftAcc;
             bool rightDropped = _prevRightAcc > 0 && rightAcc < _prevRightAcc;
             if (leftDropped) _leftFlashEnd = Time.time + FlashDuration;
             if (rightDropped) _rightFlashEnd = Time.time + FlashDuration;
-            // 加えて、カットスコアが設定値を下回ったときも鳴らす（例:110設定→109点以下で鳴る）。
-            // 精度低下・低スコアはそれぞれ独立に有効/無効を切り替えられる。両方満たしても1回だけ鳴る。
-            bool accSound = _config.DropSoundAccuracyEnabled;
-            double soundThreshold = _config.DropSoundThreshold;
-            bool leftLowScore = IsNewLowScoreCut(_tracker.LeftTracker, ref _leftPrevCutSerial);
-            bool rightLowScore = IsNewLowScoreCut(_tracker.RightTracker, ref _rightPrevCutSerial);
-            if ((accSound && leftDropped && _prevLeftAcc - leftAcc >= soundThreshold) || leftLowScore)
-                TryPlayDropSound(isLeft: true, _tracker.LeftTracker.TotalNotes, _leftRecentTriggers, ref _leftSuppressed);
-            if ((accSound && rightDropped && _prevRightAcc - rightAcc >= soundThreshold) || rightLowScore)
-                TryPlayDropSound(isLeft: false, _tracker.RightTracker.TotalNotes, _rightRecentTriggers, ref _rightSuppressed);
+            // サウンド: 低スコアカット（平均点より閾値以上低い）とミス・バッドカット。両方満たしても1回だけ鳴る。
+            bool leftLowScore = IsNewLowScoreCut(_tracker.LeftTracker, ref _leftPrevCutSerial,
+                ref _leftScoreThresholdMult, ref _leftCutsSinceLowScore);
+            bool rightLowScore = IsNewLowScoreCut(_tracker.RightTracker, ref _rightPrevCutSerial,
+                ref _rightScoreThresholdMult, ref _rightCutsSinceLowScore);
+            bool leftMiss = IsNewMiss(_tracker.LeftTracker, ref _leftPrevMissCount);
+            bool rightMiss = IsNewMiss(_tracker.RightTracker, ref _rightPrevMissCount);
+            if (leftLowScore || leftMiss)
+                TryPlayDropSound(isLeft: true, _tracker.LeftTracker.TotalNotes);
+            if (rightLowScore || rightMiss)
+                TryPlayDropSound(isLeft: false, _tracker.RightTracker.TotalNotes);
             _prevLeftAcc = leftAcc;
             _prevRightAcc = rightAcc;
 
@@ -551,51 +551,59 @@ namespace LRCounter.Controllers.Gameplay
             accLabel.text = bestAcc > 0 ? $"PB:{bestAcc * 100.0:F1}%" : "";
         }
 
-        // その手で新しいカット（115満点ノーツのみ）があり、そのスコアがその手の平均より設定点数以上低ければ true。
-        // チェーンノーツはスコアの意味が異なるため対象外（CutScoreSerial が増えない）。
-        // 連発抑制の窓幅（この直近ノーツ数の中で発火回数を数える）
-        private const int SuppressWindowNotes = 10;
-
-        // 鳴らす条件を満たしたときに、序盤の抑制(Warmup)と連発抑制(SuppressCount)を通過したら鳴らす。
-        //   Warmup        … その手の合計ノーツ数が DropSoundWarmupNotes 未満の間は鳴らさない（序盤は精度変動が激しいため）
-        //   SuppressCount … その手の直近10ノーツで DropSoundSuppressCount 回発火していたら鳴らさない。
-        //                   抑制中の発火も履歴に残すので、低下が収まって発火が閾値未満に戻るまで黙り続ける。
-        //                   抑制に入った瞬間だけ「もう精度を気にする余裕はない」の合図としてダブルビープを鳴らす。
-        private void TryPlayDropSound(bool isLeft, int totalNotes, Queue<int> recentTriggers, ref bool suppressedState)
+        // 鳴らす条件を満たしたときに、序盤の抑制(Warmup)を通過したら鳴らす。
+        //   Warmup … その手の合計ノーツ数が DropSoundWarmupNotes 未満の間は鳴らさない（序盤は平均点の変動が激しいため）
+        private void TryPlayDropSound(bool isLeft, int totalNotes)
         {
             if (totalNotes < _config.DropSoundWarmupNotes) return;
-
-            // 窓の外に出た発火を捨ててから、今回の発火を記録する（同一ノーツの二重記録は避ける）
-            while (recentTriggers.Count > 0 && recentTriggers.Peek() <= totalNotes - SuppressWindowNotes)
-                recentTriggers.Dequeue();
-            int suppressCount = _config.DropSoundSuppressCount;
-            bool suppressed = suppressCount > 0 && recentTriggers.Count >= suppressCount;
-            if (recentTriggers.Count == 0 || recentTriggers.Last() != totalNotes)
-                recentTriggers.Enqueue(totalNotes);
-
-            if (suppressed)
-            {
-                // 抑制の立ち上がり（非抑制→抑制）だけ2回連続で鳴らして知らせ、以降は黙る
-                if (!suppressedState)
-                {
-                    suppressedState = true;
-                    _dropSound.PlayDouble(isLeft);
-                }
-                return;
-            }
-            suppressedState = false;
             _dropSound.Play(isLeft);
         }
 
+        // その手で新しいミスまたはバッドカットがあれば true。
+        // カウントの追従は無効時も行い、有効化直後に過去のミスで鳴らないようにする。
+        private bool IsNewMiss(HandPPTracker tracker, ref int prevMissCount)
+        {
+            int missCount = tracker.MissedNotes + tracker.BadCuts;
+            bool isNew = missCount > prevMissCount;
+            prevMissCount = missCount;
+            return _config.DropSoundMissEnabled && isNew;
+        }
+
+        // 低スコア閾値の自動拡大の倍率上限。倍々(x2,x4,x8,x16,x32,…)に上限は設けないが、
+        // オーバーフロー防止のためだけに十分大きな値で止める（この倍率では実質もう鳴らない）
+        private const int ScoreThresholdMaxMult = 1 << 20;
+
         // シリアルの追従は無効時も行い、有効化直後に過去のカットで鳴らないようにする。
-        private bool IsNewLowScoreCut(HandPPTracker tracker, ref int prevSerial)
+        // 高難度で鳴りすぎないよう閾値を自動拡大する:
+        //   実効閾値 = 平均 - 基準点(DropSoundScoreThreshold) × 倍率。
+        //   実効閾値を下回るカットが直近mノーツ(DropSoundScoreWindowNotes)以内に続くたび倍率を
+        //   x2→x4→x8→x16→…と倍増し続ける（曲頭など久しぶりの1発目はx1のまま）。
+        //   mノーツ連続で実効閾値を上回ったらx1へ戻す。
+        private bool IsNewLowScoreCut(HandPPTracker tracker, ref int prevSerial,
+            ref int thresholdMult, ref int cutsSinceLowScore)
         {
             int serial = tracker.CutScoreSerial;
             bool isNew = serial != prevSerial;
             prevSerial = serial;
-            return _config.DropSoundScoreEnabled && isNew
-                && tracker.AverageCutScore >= 0
-                && tracker.LastCutScore < tracker.AverageCutScore - _config.DropSoundScoreThreshold;
+            if (!isNew || tracker.AverageCutScore < 0) return false;
+
+            int window = _config.DropSoundScoreWindowNotes;
+            bool breach = tracker.LastCutScore
+                < tracker.AverageCutScore - _config.DropSoundScoreThreshold * thresholdMult;
+            if (breach)
+            {
+                // 直近mノーツ以内に前回の発火があれば倍率を倍増（初回発火はx1のまま鳴らすだけ）
+                if (cutsSinceLowScore < window && thresholdMult < ScoreThresholdMaxMult)
+                    thresholdMult *= 2;
+                cutsSinceLowScore = 0;
+            }
+            else
+            {
+                // mノーツ連続で実効閾値を上回ったら倍率をx1へ戻す
+                if (cutsSinceLowScore < FarPast) cutsSinceLowScore++;
+                if (cutsSinceLowScore >= window) thresholdMult = 1;
+            }
+            return _config.DropSoundScoreEnabled && breach;
         }
 
         // 精度(%)を窓[low, low+幅]で正規化して塗りつぶし量(0〜1)に変換する
