@@ -1,6 +1,5 @@
 using LRCounter.Configuration;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,7 +8,7 @@ using UnityEngine.Networking;
 
 namespace LRCounter.Controllers.Gameplay
 {
-    // 精度低下・低スコア時にビープ音またはカスタムサウンドを鳴らすプレイヤー
+    // 低スコア・ミス時にビープ音またはカスタムサウンドを鳴らすプレイヤー
     // （WallHitSound の再生方式・カスタムサウンド読み込み方式を流用）。
     // AudioSource は WallHitSound と同じく独立 GameObject + DontDestroyOnLoad で保持し、
     // 曲をまたいで使い回す（static で1つだけ作る）。Canvas の子にすると環境によっては
@@ -29,11 +28,6 @@ namespace LRCounter.Controllers.Gameplay
         private static AudioClip? _rightClip;
         private static string _leftClipKey = "";
         private static string _rightClipKey = "";
-        // 2回目のビープを遅延再生するためのコルーチン実行役（常駐 GameObject に載せる）
-        private static CoroutineRunner? _runner;
-
-        // 抑制発動時のダブルビープで、2発目までの間隔（秒）。ビープ長(約0.12秒)より少し長め
-        private const float DoubleBeepGap = 0.15f;
 
         // 生成ビープ音を表す設定値（これ以外はUserData/LRCounter/Soundのファイル名として扱う）
         public const string BeepClipName = "beep";
@@ -58,8 +52,6 @@ namespace LRCounter.Controllers.Gameplay
 
             _leftSource = CreateSource(go);
             _rightSource = CreateSource(go);
-
-            _runner = go.AddComponent<CoroutineRunner>();
         }
 
         private static AudioSource CreateSource(GameObject go)
@@ -109,26 +101,12 @@ namespace LRCounter.Controllers.Gameplay
             }
             if (clip == null) return;
 
-            source.volume = Mathf.Clamp01(_config.DropSoundVolume);
+            source.volume = Mathf.Clamp01(isLeft ? _config.DropSoundLeftVolume : _config.DropSoundRightVolume);
             source.pitch = Mathf.Clamp(
                 isLeft ? _config.DropSoundLeftPitch : _config.DropSoundRightPitch, 0.5f, 2.0f);
             // ステレオパン: ONなら左手=左耳のみ(-1)/右手=右耳のみ(+1)、OFFなら中央(0)
             source.panStereo = _config.DropSoundStereoPan ? (isLeft ? -1f : 1f) : 0f;
             source.PlayOneShot(clip, 1.0f);
-        }
-
-        // 2回連続で鳴らす（連発抑制が発動した合図）。1発目を即時、2発目を少し遅らせて鳴らす。
-        public void PlayDouble(bool isLeft)
-        {
-            Play(isLeft);
-            if (_runner != null) _runner.StartCoroutine(PlaySecond(isLeft));
-            else Play(isLeft);  // ランナーが無い場合は重なるが最低限2発目を試みる
-        }
-
-        private IEnumerator PlaySecond(bool isLeft)
-        {
-            yield return new WaitForSecondsRealtime(DoubleBeepGap);
-            Play(isLeft);
         }
 
         // クリップ名からAudioClipを作る。カスタムファイルの読み込みに失敗したらビープにフォールバック
@@ -256,7 +234,5 @@ namespace LRCounter.Controllers.Gameplay
             return clip;
         }
 
-        // 遅延再生用の最小 MonoBehaviour（常駐 GameObject に載せてコルーチンを走らせるためだけの器）
-        private class CoroutineRunner : MonoBehaviour { }
     }
 }

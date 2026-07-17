@@ -48,10 +48,11 @@ namespace LRCounter.Configuration
         public virtual bool ShowBarPPLabel { get; set; } = true;       // バー上のPPラベルを表示する（true=ON）
         public virtual float FlashDuration { get; set; } = 0.6f;      // ノーツヒット時のフラッシュが消えるまでの秒数
 
-        // ─── 精度低下・低スコア時のサウンド（フラッシュと同じタイミングで鳴る低いビープ音） ───
-        public virtual bool DropSoundAccuracyEnabled { get; set; } = true;  // 精度低下で鳴らすON/OFF
+        // ─── 低スコア・ミス時のサウンド ───
         public virtual bool DropSoundScoreEnabled { get; set; } = false;    // カットスコアが平均より閾値以上低いときに鳴らすON/OFF
-        public virtual float DropSoundVolume { get; set; } = 1.0f;     // 音量(0〜1)
+        public virtual bool DropSoundMissEnabled { get; set; } = false;     // ミス・バッドカットで鳴らすON/OFF（ミスした手の音が鳴る）
+        public virtual float DropSoundLeftVolume { get; set; } = 1.0f;   // 左手サウンドの音量(0〜1)
+        public virtual float DropSoundRightVolume { get; set; } = 1.0f;  // 右手サウンドの音量(0〜1)
         // ステレオパン: 左手の音を左耳だけ、右手の音を右耳だけに鳴らす（true=ON）
         public virtual bool DropSoundStereoPan { get; set; } = true;
         public virtual float DropSoundLeftFrequency { get; set; } = 500f;   // 左手用ビープ周波数(Hz)。スライダー50Hz刻みに合わせた既定
@@ -61,14 +62,12 @@ namespace LRCounter.Configuration
         public virtual string DropSoundRightClip { get; set; } = "beep";
         public virtual float DropSoundLeftPitch { get; set; } = 1.0f;   // 左手サウンドのピッチ(0.5〜2.0)
         public virtual float DropSoundRightPitch { get; set; } = 1.0f;  // 右手サウンドのピッチ(0.5〜2.0)
-        public virtual float DropSoundThreshold { get; set; } = 0.1f;  // 音を鳴らす精度低下量の閾値(%)。前回比でこの値以上下がったときだけ鳴る(0=少しでも下がれば鳴る)
         public virtual float DropSoundScoreThreshold { get; set; } = 7f;  // その手のカットスコア平均よりこの点数以上低いカットで鳴らす(例:平均110で7なら103未満で鳴る)
-        // プレイ序盤は精度の変動が激しいため、その手の合計ノーツ数がこの値に達するまでは鳴らさない(0=無効)
+        // 低スコア音の連発対策（高難度で鳴りすぎ防止）: 閾値を下回るカットが直近このノーツ数以内に
+        // 続くたび閾値の倍率をx2→x4→x8と倍増し、このノーツ数連続で上回ったらx1へ戻す
+        public virtual int DropSoundScoreWindowNotes { get; set; } = 5;
+        // プレイ序盤は平均点の変動が激しいため、その手の合計ノーツ数がこの値に達するまでは鳴らさない(0=無効)
         public virtual int DropSoundWarmupNotes { get; set; } = 10;
-        // 連発抑制: その手の直近10ノーツでこの回数鳴っていたら鳴らすのを止める(0=無効)。
-        // そんなに鳴る状況では精度を気にする余裕がないため、収まるまで黙る。
-        // ほとんど鳴らず「たまに鳴る」くらいが精度低下を意識しやすいので既定は低め(3)
-        public virtual int DropSoundSuppressCount { get; set; } = 3;
 
         // ─── 合算ラベル（左右合計の精度・PPを中央上部に表示） ───────────────
         public virtual bool ShowTotalLabel { get; set; } = true; // 表示ON/OFF
