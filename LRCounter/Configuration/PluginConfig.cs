@@ -64,8 +64,10 @@ namespace LRCounter.Configuration
         public virtual float DropSoundRightPitch { get; set; } = 1.0f;  // 右手サウンドのピッチ(0.5〜2.0)
         public virtual float DropSoundScoreThreshold { get; set; } = 7f;  // その手のカットスコア平均よりこの点数以上低いカットで鳴らす(例:平均110で7なら103未満で鳴る)
         // 低スコア音の連発対策（高難度で鳴りすぎ防止）: 閾値を下回るカットが直近このノーツ数以内に
-        // 続くたび閾値の倍率をx2→x4→x8と倍増し、このノーツ数連続で上回ったらx1へ戻す
+        // 続くたび閾値の倍率をx2→x4→x8と倍増する
         public virtual int DropSoundScoreWindowNotes { get; set; } = 5;
+        // 倍率の戻し: このノーツ数連続で閾値を上回るたびに倍率を半減する(x8→x4→x2→x1)
+        public virtual int DropSoundScoreRecoverNotes { get; set; } = 5;
         // プレイ序盤は平均点の変動が激しいため、その手の合計ノーツ数がこの値に達するまでは鳴らさない(0=無効)
         public virtual int DropSoundWarmupNotes { get; set; } = 10;
 
