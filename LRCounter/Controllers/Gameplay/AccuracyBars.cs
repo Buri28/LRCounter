@@ -578,7 +578,8 @@ namespace LRCounter.Controllers.Gameplay
         //   実効閾値 = 平均 - 基準点(DropSoundScoreThreshold) × 倍率。
         //   実効閾値を下回るカットが直近mノーツ(DropSoundScoreWindowNotes)以内に続くたび倍率を
         //   x2→x4→x8→x16→…と倍増し続ける（曲頭など久しぶりの1発目はx1のまま）。
-        //   mノーツ連続で実効閾値を上回ったらx1へ戻す。
+        //   実効閾値をrノーツ(DropSoundScoreRecoverNotes)連続で上回るたびに倍率を半減して
+        //   x8→x4→x2→x1と段階的に戻す。
         private bool IsNewLowScoreCut(HandPPTracker tracker, ref int prevSerial,
             ref int thresholdMult, ref int cutsSinceLowScore)
         {
@@ -599,9 +600,13 @@ namespace LRCounter.Controllers.Gameplay
             }
             else
             {
-                // mノーツ連続で実効閾値を上回ったら倍率をx1へ戻す
+                // rノーツ連続で実効閾値を上回るたびに倍率を半減(x8→x4→x2→x1)。
+                // カウンタはFarPastで頭打ちだが、必要な半減回数(最大21回)×r(最大20)は
+                // FarPast(1000)より小さいので、頭打ち前に必ずx1まで戻り切る。
                 if (cutsSinceLowScore < FarPast) cutsSinceLowScore++;
-                if (cutsSinceLowScore >= window) thresholdMult = 1;
+                int recover = _config.DropSoundScoreRecoverNotes;
+                if (thresholdMult > 1 && recover > 0 && cutsSinceLowScore % recover == 0)
+                    thresholdMult /= 2;
             }
             return _config.DropSoundScoreEnabled && breach;
         }

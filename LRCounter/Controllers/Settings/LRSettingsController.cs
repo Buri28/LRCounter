@@ -154,6 +154,13 @@ namespace LRCounter.Controllers.Settings
             set { _config.DropSoundScoreWindowNotes = value; _config.Changed(); }
         }
 
+        [UIValue("drop-sound-score-recover-notes")]
+        public int DropSoundScoreRecoverNotes
+        {
+            get => _config.DropSoundScoreRecoverNotes;
+            set { _config.DropSoundScoreRecoverNotes = value; _config.Changed(); }
+        }
+
         [UIValue("drop-sound-warmup-notes")]
         public int DropSoundWarmupNotes
         {
@@ -426,6 +433,7 @@ namespace LRCounter.Controllers.Settings
             _config.DropSoundRightFrequency = d.DropSoundRightFrequency;
             _config.DropSoundScoreThreshold = d.DropSoundScoreThreshold;
             _config.DropSoundScoreWindowNotes = d.DropSoundScoreWindowNotes;
+            _config.DropSoundScoreRecoverNotes = d.DropSoundScoreRecoverNotes;
             _config.DropSoundWarmupNotes = d.DropSoundWarmupNotes;
             _config.DropSoundLeftClip = d.DropSoundLeftClip;
             _config.DropSoundRightClip = d.DropSoundRightClip;
@@ -475,6 +483,7 @@ namespace LRCounter.Controllers.Settings
             NotifyPropertyChanged(nameof(DropSoundRightFrequency));
             NotifyPropertyChanged(nameof(DropSoundScoreThreshold));
             NotifyPropertyChanged(nameof(DropSoundScoreWindowNotes));
+            NotifyPropertyChanged(nameof(DropSoundScoreRecoverNotes));
             NotifyPropertyChanged(nameof(DropSoundWarmupNotes));
             NotifyPropertyChanged(nameof(DropSoundLeftClip));
             NotifyPropertyChanged(nameof(DropSoundRightClip));
