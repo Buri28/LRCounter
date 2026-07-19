@@ -56,6 +56,9 @@ namespace LRCounter.Controllers.Gameplay
         // カット数の初期値は「十分昔」を表す大きな値（曲頭の初回発火で倍率が上がらないようにする）
         private int _leftScoreThresholdMult = 1;
         private int _rightScoreThresholdMult = 1;
+        // デバッグ表示用: 低スコア音の現在の閾値倍率（左右）を外部から参照できるように公開
+        internal int LeftScoreThresholdMult => _leftScoreThresholdMult;
+        internal int RightScoreThresholdMult => _rightScoreThresholdMult;
         private int _leftCutsSinceLowScore = FarPast;
         private int _rightCutsSinceLowScore = FarPast;
         private const int FarPast = 1000;

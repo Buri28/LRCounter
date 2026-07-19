@@ -59,10 +59,12 @@ namespace LRCounter.Controllers.Gameplay
 
             // 各表示コンポーネントを生成して共通インターフェースのリストに登録（移譲先）。
             // 要素を追加したいときはここに add するだけでよい。
-            _components.Add(new AccuracyBars(_config, _trackerService, leftColor, rightColor));
+            var accuracyBars = new AccuracyBars(_config, _trackerService, leftColor, rightColor);
+            _components.Add(accuracyBars);
             _components.Add(new TotalLabel(_config, _trackerService));
             if (!_config.HideDebugLabel)
-                _components.Add(new DebugLabel(_trackerService));
+                // 低スコア音の閾値倍率を表示するため AccuracyBars を渡す
+                _components.Add(new DebugLabel(_trackerService, accuracyBars));
 
             CreateDisplay();
             // ノーツを切るたびにTrackerServiceからイベントが来るので表示を更新する

@@ -9,9 +9,11 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Deterministic>true</Deterministic>
     <!-- 実際にプレイ・デプロイする Beat Saber インストール。環境変数 BeatSaberPath で上書き可能 -->
-    <BeatSaberPath Condition="'$(BeatSaberPath)' == ''">D:\BSManager\BSInstances\1.40.8</BeatSaberPath>
+    <BeatSaberPath Condition="'$(BeatSaberPath)' == ''">$(UserProfile)\BSManager\BSInstances\1.40.8</BeatSaberPath>
     <BeatSaberManagedPath>$(BeatSaberPath)\Beat Saber_Data\Managed</BeatSaberManagedPath>
     <BeatSaberPluginsPath>$(BeatSaberPath)\Plugins</BeatSaberPluginsPath>
+    <!-- BSIPAの適用待ちフォルダ。モッドをインストールした直後〜次回ゲーム起動までの間はここに置かれる -->
+    <BeatSaberPendingPluginsPath>$(BeatSaberPath)\IPA\Pending\Plugins</BeatSaberPendingPluginsPath>
     <BundledDepsDir>$(MSBuildThisFileDirectory)..\externals\extracted</BundledDepsDir>
     <OutputPath>bin\$(Configuration)\$(TargetFramework)\</OutputPath>
   </PropertyGroup>
@@ -67,32 +69,36 @@
       <Private>False</Private>
     </Reference>
 
-    <!-- IPA / BSIPA -->
+    <!-- IPA / BSIPA (インストール済みのゲーム側を優先し、無ければ同梱版) -->
     <Reference Include="IPA">
-      <HintPath>$(BundledDepsDir)\bsipa\IPA\Data\Managed\IPA.Loader.dll</HintPath>
+      <HintPath Condition="Exists('$(BeatSaberPath)\IPA\Data\Managed\IPA.Loader.dll')">$(BeatSaberPath)\IPA\Data\Managed\IPA.Loader.dll</HintPath>
+      <HintPath Condition="!Exists('$(BeatSaberPath)\IPA\Data\Managed\IPA.Loader.dll')">$(BundledDepsDir)\bsipa\IPA\Data\Managed\IPA.Loader.dll</HintPath>
       <Private>False</Private>
       <SpecificVersion>False</SpecificVersion>
     </Reference>
 
-    <!-- Harmony -->
+    <!-- Harmony (同上) -->
     <Reference Include="0Harmony">
-      <HintPath>$(BundledDepsDir)\bsipa\IPA\Libs\0Harmony.dll</HintPath>
+      <HintPath Condition="Exists('$(BeatSaberPath)\IPA\Libs\0Harmony.dll')">$(BeatSaberPath)\IPA\Libs\0Harmony.dll</HintPath>
+      <HintPath Condition="!Exists('$(BeatSaberPath)\IPA\Libs\0Harmony.dll')">$(BundledDepsDir)\bsipa\IPA\Libs\0Harmony.dll</HintPath>
       <Private>False</Private>
       <SpecificVersion>False</SpecificVersion>
     </Reference>
 
-    <!-- BSML -->
+    <!-- BSML (Plugins → 適用待ちのPending → 同梱版 の順で探す) -->
     <Reference Include="BSML">
       <HintPath Condition="Exists('$(BeatSaberPluginsPath)\BSML.dll')">$(BeatSaberPluginsPath)\BSML.dll</HintPath>
-      <HintPath Condition="!Exists('$(BeatSaberPluginsPath)\BSML.dll')">$(BundledDepsDir)\bsml\Plugins\BSML.dll</HintPath>
+      <HintPath Condition="!Exists('$(BeatSaberPluginsPath)\BSML.dll') And Exists('$(BeatSaberPendingPluginsPath)\BSML.dll')">$(BeatSaberPendingPluginsPath)\BSML.dll</HintPath>
+      <HintPath Condition="!Exists('$(BeatSaberPluginsPath)\BSML.dll') And !Exists('$(BeatSaberPendingPluginsPath)\BSML.dll')">$(BundledDepsDir)\bsml\Plugins\BSML.dll</HintPath>
       <Private>False</Private>
       <SpecificVersion>False</SpecificVersion>
     </Reference>
 
-    <!-- SiraUtil -->
+    <!-- SiraUtil (同上) -->
     <Reference Include="SiraUtil">
       <HintPath Condition="Exists('$(BeatSaberPluginsPath)\SiraUtil.dll')">$(BeatSaberPluginsPath)\SiraUtil.dll</HintPath>
-      <HintPath Condition="!Exists('$(BeatSaberPluginsPath)\SiraUtil.dll')">$(BundledDepsDir)\sirautil\Plugins\SiraUtil.dll</HintPath>
+      <HintPath Condition="!Exists('$(BeatSaberPluginsPath)\SiraUtil.dll') And Exists('$(BeatSaberPendingPluginsPath)\SiraUtil.dll')">$(BeatSaberPendingPluginsPath)\SiraUtil.dll</HintPath>
+      <HintPath Condition="!Exists('$(BeatSaberPluginsPath)\SiraUtil.dll') And !Exists('$(BeatSaberPendingPluginsPath)\SiraUtil.dll')">$(BundledDepsDir)\sirautil\Plugins\SiraUtil.dll</HintPath>
       <Private>False</Private>
       <SpecificVersion>False</SpecificVersion>
     </Reference>
