@@ -165,8 +165,10 @@ namespace LRCounter.Controllers.Gameplay
                 ref _leftScoreThresholdMult, ref _leftCutsSinceLowScore);
             bool rightLowScore = IsNewLowScoreCut(_tracker.RightTracker, ref _rightPrevCutSerial,
                 ref _rightScoreThresholdMult, ref _rightCutsSinceLowScore);
-            bool leftMiss = IsNewMiss(_tracker.LeftTracker, ref _leftPrevMissCount);
-            bool rightMiss = IsNewMiss(_tracker.RightTracker, ref _rightPrevMissCount);
+            bool leftMiss = IsNewMiss(_tracker.LeftTracker, ref _leftPrevMissCount,
+                ref _leftScoreThresholdMult, ref _leftCutsSinceLowScore);
+            bool rightMiss = IsNewMiss(_tracker.RightTracker, ref _rightPrevMissCount,
+                ref _rightScoreThresholdMult, ref _rightCutsSinceLowScore);
             if (leftLowScore || leftMiss)
                 TryPlayDropSound(isLeft: true, _tracker.LeftTracker.TotalNotes);
             if (rightLowScore || rightMiss)
@@ -564,17 +566,28 @@ namespace LRCounter.Controllers.Gameplay
 
         // その手で新しいミスまたはバッドカットがあれば true。
         // カウントの追従は無効時も行い、有効化直後に過去のミスで鳴らないようにする。
-        private bool IsNewMiss(HandPPTracker tracker, ref int prevMissCount)
+        // ミスも低スコアカットと同じ「発火」として扱う: 直近mノーツ以内の連続発火なら閾値倍率を
+        // 倍増し、発火からのカット数を0に戻す（ミス多発時に低スコア音が鳴りすぎるのを防ぐ）。
+        private bool IsNewMiss(HandPPTracker tracker, ref int prevMissCount,
+            ref int thresholdMult, ref int cutsSinceLowScore)
         {
             int missCount = tracker.MissedNotes + tracker.BadCuts;
             bool isNew = missCount > prevMissCount;
             prevMissCount = missCount;
+            if (isNew)
+            {
+                // 倍率更新は低スコアカットの breach 時と同じルール（初回発火はx1のまま）
+                if (cutsSinceLowScore < _config.DropSoundScoreWindowNotes
+                    && thresholdMult < ScoreThresholdMaxMult)
+                    thresholdMult *= 2;
+                cutsSinceLowScore = 0;
+            }
             return _config.DropSoundMissEnabled && isNew;
         }
 
-        // 低スコア閾値の自動拡大の倍率上限。倍々(x2,x4,x8,x16,x32,…)に上限は設けないが、
-        // オーバーフロー防止のためだけに十分大きな値で止める（この倍率では実質もう鳴らない）
-        private const int ScoreThresholdMaxMult = 1 << 20;
+        // 低スコア閾値の自動拡大の倍率上限。倍々(x2,x4,…,x1024)でここまで拡大したら頭打ちにする
+        // （回復の半減で戻るのに時間がかかりすぎないようにする）
+        private const int ScoreThresholdMaxMult = 1024;
 
         // シリアルの追従は無効時も行い、有効化直後に過去のカットで鳴らないようにする。
         // 高難度で鳴りすぎないよう閾値を自動拡大する:
@@ -604,7 +617,7 @@ namespace LRCounter.Controllers.Gameplay
             else
             {
                 // rノーツ連続で実効閾値を上回るたびに倍率を半減(x8→x4→x2→x1)。
-                // カウンタはFarPastで頭打ちだが、必要な半減回数(最大21回)×r(最大20)は
+                // カウンタはFarPastで頭打ちだが、必要な半減回数(最大10回)×r(最大20)は
                 // FarPast(1000)より小さいので、頭打ち前に必ずx1まで戻り切る。
                 if (cutsSinceLowScore < FarPast) cutsSinceLowScore++;
                 int recover = _config.DropSoundScoreRecoverNotes;
