@@ -9,6 +9,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Deterministic>true</Deterministic>
     <!-- 実際にプレイ・デプロイする Beat Saber インストール。環境変数 BeatSaberPath で上書き可能 -->
+    <BeatSaberPath Condition="'$(BeatSaberPath)' == '' And Exists('D:\BSManager\BSInstances\1.40.8')">D:\BSManager\BSInstances\1.40.8</BeatSaberPath>
     <BeatSaberPath Condition="'$(BeatSaberPath)' == ''">$(UserProfile)\BSManager\BSInstances\1.40.8</BeatSaberPath>
     <BeatSaberManagedPath>$(BeatSaberPath)\Beat Saber_Data\Managed</BeatSaberManagedPath>
     <BeatSaberPluginsPath>$(BeatSaberPath)\Plugins</BeatSaberPluginsPath>
