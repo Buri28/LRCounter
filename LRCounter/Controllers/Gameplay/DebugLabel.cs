@@ -8,12 +8,17 @@ namespace LRCounter.Controllers.Gameplay
     internal class DebugLabel : IDisplayComponent
     {
         private readonly LRTrackerService _tracker;
+        private readonly AccuracyBars _accuracyBars; // 低スコア音の閾値倍率（左右）の参照元
 
         private TMP_Text? _label;
 
-        public DebugLabel(LRTrackerService tracker)
+        // Canvasよりプレイヤー側へ寄せるローカルZオフセット（Canvasスケール0.06 → -8で約0.5m手前）
+        private const float LocalZOffset = -8f;
+
+        public DebugLabel(LRTrackerService tracker, AccuracyBars accuracyBars)
         {
             _tracker = tracker;
+            _accuracyBars = accuracyBars;
         }
 
         public void Build(RectTransform canvasRT, int layer)
@@ -27,6 +32,8 @@ namespace LRCounter.Controllers.Gameplay
             rt.anchorMax = new Vector2(1.00f, 0.32f);
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
+            // ラベルだけCanvas面より手前（プレイヤー側）に出す
+            rt.anchoredPosition3D = new Vector3(0f, 0f, LocalZOffset);
 
             // BeatSaberUI.CreateText は位置が制御できないため TextMeshProUGUI を直接使用
             var tmp = go.AddComponent<TextMeshProUGUI>();
@@ -68,7 +75,8 @@ namespace LRCounter.Controllers.Gameplay
             _label.text =
                 $"{totalAcc:F2}%  {totalPP:F1}pp  ★{star:F2}  L:{lScore}  R:{rScore}  x{mult}\n" +
                 $"{calcScore}：({gameScore}) /{_tracker.TotalMaxScore}\n" +
-                $"Thr:{thrPP:F2}pp ({thrAcc:F2}%)";
+                $"Thr:{thrPP:F2}pp ({thrAcc:F2}%)  " +
+                $"Snd L:x{_accuracyBars.LeftScoreThresholdMult} R:x{_accuracyBars.RightScoreThresholdMult}";
             _label.color = scoreMatches ? Color.yellow : Color.red;
         }
 
