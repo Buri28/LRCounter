@@ -624,7 +624,8 @@ namespace LRCounter.Controllers.Gameplay
                 if (thresholdMult > 1 && recover > 0 && cutsSinceLowScore % recover == 0)
                     thresholdMult /= 2;
             }
-            return _config.DropSoundScoreEnabled && breach;
+            // 音は低下の初回発火(倍率x1)だけ鳴らす。連続して下がって倍率がx2以降に上がっている間は鳴らさない
+            return _config.DropSoundScoreEnabled && breach && thresholdMult == 1;
         }
 
         // 精度(%)を窓[low, low+幅]で正規化して塗りつぶし量(0〜1)に変換する
