@@ -55,7 +55,7 @@ namespace LRCounter.Configuration
         public virtual float DropSoundRightVolume { get; set; } = 1.0f;  // 右手サウンドの音量(0〜1)
         // ステレオパン: 左手の音を左耳だけ、右手の音を右耳だけに鳴らす（true=ON）
         public virtual bool DropSoundStereoPan { get; set; } = true;
-        public virtual float DropSoundLeftFrequency { get; set; } = 500f;   // 左手用ビープ周波数(Hz)。スライダー50Hz刻みに合わせた既定
+        public virtual float DropSoundLeftFrequency { get; set; } = 850f;   // 左手用ビープ周波数(Hz)。スライダー50Hz刻みに合わせた既定
         public virtual float DropSoundRightFrequency { get; set; } = 500f;  // 右手用ビープ周波数(Hz)。スライダー50Hz刻みに合わせた既定
         // 再生するサウンド。"beep"=生成ビープ音／それ以外=UserData/LRCounter/Sound 内のファイル名(拡張子なし、wav/ogg/mp3)
         public virtual string DropSoundLeftClip { get; set; } = "beep";
@@ -67,9 +67,21 @@ namespace LRCounter.Configuration
         // 続くたび閾値の倍率をx2→x4→x8と倍増する
         public virtual int DropSoundScoreWindowNotes { get; set; } = 5;
         // 倍率の戻し: このノーツ数連続で閾値を上回るたびに倍率を半減する(x8→x4→x2→x1)
-        public virtual int DropSoundScoreRecoverNotes { get; set; } = 5;
+        public virtual int DropSoundScoreRecoverNotes { get; set; } = 20;
         // プレイ序盤は平均点の変動が激しいため、その手の合計ノーツ数がこの値に達するまでは鳴らさない(0=無効)
         public virtual int DropSoundWarmupNotes { get; set; } = 10;
+
+        // ─── ミス音（上の低スコア音とは独立した音。左右それぞれ設定できる） ───
+        // 再生するサウンド。"beep"=生成ビープ音／それ以外=UserData/LRCounter/Sound 内のファイル名(拡張子なし)
+        public virtual string DropSoundMissLeftClip { get; set; } = "beep";
+        public virtual string DropSoundMissRightClip { get; set; } = "beep";
+        // ミス用ビープ周波数(Hz)。低スコア音(既定500)と区別できるよう低めを既定にする
+        public virtual float DropSoundMissLeftFrequency { get; set; } = 250f;
+        public virtual float DropSoundMissRightFrequency { get; set; } = 250f;
+        public virtual float DropSoundMissLeftPitch { get; set; } = 1.2f;   // ミス音(左)のピッチ(0.5〜2.0)
+        public virtual float DropSoundMissRightPitch { get; set; } = 1.0f;  // ミス音(右)のピッチ(0.5〜2.0)
+        public virtual float DropSoundMissLeftVolume { get; set; } = 1.0f;  // ミス音(左)の音量(0〜1)
+        public virtual float DropSoundMissRightVolume { get; set; } = 1.0f; // ミス音(右)の音量(0〜1)
 
         // ─── 合算ラベル（左右合計の精度・PPを中央上部に表示） ───────────────
         public virtual bool ShowTotalLabel { get; set; } = true; // 表示ON/OFF

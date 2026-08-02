@@ -209,6 +209,64 @@ namespace LRCounter.Controllers.Settings
             set { _config.DropSoundRightPitch = value; _config.Changed(); }
         }
 
+        // ———— ミス音（低スコア音とは独立。左右それぞれ設定できる） ————
+
+        [UIValue("drop-sound-miss-left-clip")]
+        public string DropSoundMissLeftClip
+        {
+            get => _config.DropSoundMissLeftClip;
+            set { _config.DropSoundMissLeftClip = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-miss-right-clip")]
+        public string DropSoundMissRightClip
+        {
+            get => _config.DropSoundMissRightClip;
+            set { _config.DropSoundMissRightClip = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-miss-left-freq")]
+        public float DropSoundMissLeftFrequency
+        {
+            get => _config.DropSoundMissLeftFrequency;
+            set { _config.DropSoundMissLeftFrequency = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-miss-right-freq")]
+        public float DropSoundMissRightFrequency
+        {
+            get => _config.DropSoundMissRightFrequency;
+            set { _config.DropSoundMissRightFrequency = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-miss-left-pitch")]
+        public float DropSoundMissLeftPitch
+        {
+            get => _config.DropSoundMissLeftPitch;
+            set { _config.DropSoundMissLeftPitch = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-miss-right-pitch")]
+        public float DropSoundMissRightPitch
+        {
+            get => _config.DropSoundMissRightPitch;
+            set { _config.DropSoundMissRightPitch = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-miss-left-volume")]
+        public float DropSoundMissLeftVolume
+        {
+            get => _config.DropSoundMissLeftVolume;
+            set { _config.DropSoundMissLeftVolume = value; _config.Changed(); }
+        }
+
+        [UIValue("drop-sound-miss-right-volume")]
+        public float DropSoundMissRightVolume
+        {
+            get => _config.DropSoundMissRightVolume;
+            set { _config.DropSoundMissRightVolume = value; _config.Changed(); }
+        }
+
         // ———— テスト再生 ————
         // 実際の再生と同じ DropSoundPlayer を使い、現在の設定（クリップ・音量・周波数・ピッチ）で鳴らす
         private DropSoundPlayer? _testPlayer;
@@ -225,6 +283,20 @@ namespace LRCounter.Controllers.Settings
         {
             _testPlayer ??= new DropSoundPlayer(_config);
             _testPlayer.Play(isLeft: false);
+        }
+
+        [UIAction("test-miss-left")]
+        public void TestMissLeftSound()
+        {
+            _testPlayer ??= new DropSoundPlayer(_config);
+            _testPlayer.Play(isLeft: true, isMiss: true);
+        }
+
+        [UIAction("test-miss-right")]
+        public void TestMissRightSound()
+        {
+            _testPlayer ??= new DropSoundPlayer(_config);
+            _testPlayer.Play(isLeft: false, isMiss: true);
         }
 
         // ———— Shared depth ————
@@ -439,6 +511,14 @@ namespace LRCounter.Controllers.Settings
             _config.DropSoundRightClip = d.DropSoundRightClip;
             _config.DropSoundLeftPitch = d.DropSoundLeftPitch;
             _config.DropSoundRightPitch = d.DropSoundRightPitch;
+            _config.DropSoundMissLeftClip = d.DropSoundMissLeftClip;
+            _config.DropSoundMissRightClip = d.DropSoundMissRightClip;
+            _config.DropSoundMissLeftFrequency = d.DropSoundMissLeftFrequency;
+            _config.DropSoundMissRightFrequency = d.DropSoundMissRightFrequency;
+            _config.DropSoundMissLeftPitch = d.DropSoundMissLeftPitch;
+            _config.DropSoundMissRightPitch = d.DropSoundMissRightPitch;
+            _config.DropSoundMissLeftVolume = d.DropSoundMissLeftVolume;
+            _config.DropSoundMissRightVolume = d.DropSoundMissRightVolume;
             _config.DepthZ = d.DepthZ;
             _config.AccBarSpacing = d.AccBarSpacing;
             _config.AccBarY = d.AccBarY;
@@ -489,6 +569,14 @@ namespace LRCounter.Controllers.Settings
             NotifyPropertyChanged(nameof(DropSoundRightClip));
             NotifyPropertyChanged(nameof(DropSoundLeftPitch));
             NotifyPropertyChanged(nameof(DropSoundRightPitch));
+            NotifyPropertyChanged(nameof(DropSoundMissLeftClip));
+            NotifyPropertyChanged(nameof(DropSoundMissRightClip));
+            NotifyPropertyChanged(nameof(DropSoundMissLeftFrequency));
+            NotifyPropertyChanged(nameof(DropSoundMissRightFrequency));
+            NotifyPropertyChanged(nameof(DropSoundMissLeftPitch));
+            NotifyPropertyChanged(nameof(DropSoundMissRightPitch));
+            NotifyPropertyChanged(nameof(DropSoundMissLeftVolume));
+            NotifyPropertyChanged(nameof(DropSoundMissRightVolume));
             NotifyPropertyChanged(nameof(DepthZ));
             NotifyPropertyChanged(nameof(AccBarSpacing));
             NotifyPropertyChanged(nameof(AccBarY));

@@ -296,7 +296,7 @@
                           value='drop-sound-miss-enabled'
                           apply-on-change='true'
                           bind-value='true'
-                          hover-hint='Play the sound when a note is missed or bad-cut (plays that hand&apos;s sound).' />
+                          hover-hint='Play a sound when a note is missed or bad-cut (that hand&apos;s Miss Sound below). Independent from the low-score sound.' />
 
           <!-- 序盤の抑制: その手の合計ノーツ数がこの数に達するまでは鳴らさない(0=無効) -->
           <increment-setting text='Warmup Notes'
@@ -388,6 +388,69 @@
                           min='0' max='1' increment='0.05'
                           hover-hint='Volume of the right-hand sound.' />
 
+          <!-- ───────── Miss Sound (ミス・バッドカット時。低スコア音とは別の音) ───────── -->
+          <horizontal spacing='1' pad='0' pad-top='1'>
+            <text text='[Miss Sound]' color='#FFA07A' />
+          </horizontal>
+
+          <!-- ミス音(左手)。beep=生成ビープ音／それ以外=UserData/LRCounter/Sound のファイル(wav/ogg/mp3) -->
+          <dropdown-list-setting text='Miss Left Sound'
+                          value='drop-sound-miss-left-clip'
+                          options='sound-options'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Sound played when the left hand misses. Independent from the low-score sound. "beep" = generated tone.' />
+
+          <slider-setting text='Miss Left Beep (Hz)'
+                          value='drop-sound-miss-left-freq'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='0' max='10000' increment='50'
+                          hover-hint='Beep frequency (Hz) for the left-hand miss sound (used when "beep" is selected).' />
+
+          <slider-setting text='Miss Left Pitch'
+                          value='drop-sound-miss-left-pitch'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='0.5' max='2' increment='0.05'
+                          hover-hint='Playback pitch for the left-hand miss sound.' />
+
+          <increment-setting text='Miss Left Volume'
+                          value='drop-sound-miss-left-volume'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='0' max='1' increment='0.05'
+                          hover-hint='Volume of the left-hand miss sound.' />
+
+          <!-- ミス音(右手) -->
+          <dropdown-list-setting text='Miss Right Sound'
+                          value='drop-sound-miss-right-clip'
+                          options='sound-options'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Sound played when the right hand misses. Independent from the low-score sound. "beep" = generated tone.' />
+
+          <slider-setting text='Miss Right Beep (Hz)'
+                          value='drop-sound-miss-right-freq'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='0' max='10000' increment='50'
+                          hover-hint='Beep frequency (Hz) for the right-hand miss sound (used when "beep" is selected).' />
+
+          <slider-setting text='Miss Right Pitch'
+                          value='drop-sound-miss-right-pitch'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='0.5' max='2' increment='0.05'
+                          hover-hint='Playback pitch for the right-hand miss sound.' />
+
+          <increment-setting text='Miss Right Volume'
+                          value='drop-sound-miss-right-volume'
+                          apply-on-change='true'
+                          bind-value='true'
+                          min='0' max='1' increment='0.05'
+                          hover-hint='Volume of the right-hand miss sound.' />
+
           <!-- テスト再生（現在の設定で左右それぞれ鳴らす） -->
           <horizontal spacing='4' pad-top='1' horizontal-fit='PreferredSize'>
             <button text='Test Left'
@@ -398,6 +461,18 @@
                     on-click='test-right'
                     pref-width='30'
                     hover-hint='Play the right-hand sound with the current settings.' />
+          </horizontal>
+
+          <!-- ミス音のテスト再生 -->
+          <horizontal spacing='4' pad-top='1' horizontal-fit='PreferredSize'>
+            <button text='Test Miss L'
+                    on-click='test-miss-left'
+                    pref-width='30'
+                    hover-hint='Play the left-hand miss sound with the current settings.' />
+            <button text='Test Miss R'
+                    on-click='test-miss-right'
+                    pref-width='30'
+                    hover-hint='Play the right-hand miss sound with the current settings.' />
           </horizontal>
 
           <!-- 下が切れるのでスペーサー -->

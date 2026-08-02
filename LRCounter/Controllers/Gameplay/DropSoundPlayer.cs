@@ -20,14 +20,14 @@ namespace LRCounter.Controllers.Gameplay
         private readonly PluginConfig _config;
 
         // アプリ全体で常駐する AudioSource（WallHitSound と同じ常駐方式）。
-        // ステレオパン（左手=左耳のみ/右手=右耳のみ）を左右同時発音でも混ぜないよう、左右別に持つ。
-        // クリップも左右で設定が異なるため別々に持つ。キーで設定変更を検知して作り直す
-        private static AudioSource? _leftSource;
-        private static AudioSource? _rightSource;
-        private static AudioClip? _leftClip;
-        private static AudioClip? _rightClip;
-        private static string _leftClipKey = "";
-        private static string _rightClipKey = "";
+        // 「左右」×「低スコア音／ミス音」の4通りで設定（クリップ・音量・ピッチ・パン）が異なり、
+        // 同時に鳴りうる（同じ手でミスと低スコアが同時成立する）。AudioSource の volume/pitch/pan は
+        // ソース単位の設定なので、1つを使い回すと同時発音で互いの設定を上書きしてしまう。
+        // そのため4通りぶんのソースとクリップを別々に持つ。
+        // 添字は [isLeft ? 0 : 1, isMiss ? 1 : 0]。キーで設定変更を検知してクリップを作り直す
+        private static readonly AudioSource?[,] _sources = new AudioSource?[2, 2];
+        private static readonly AudioClip?[,] _clips = new AudioClip?[2, 2];
+        private static readonly string[,] _clipKeys = { { "", "" }, { "", "" } };
 
         // 生成ビープ音を表す設定値（これ以外はUserData/LRCounter/Soundのファイル名として扱う）
         public const string BeepClipName = "beep";
@@ -45,13 +45,14 @@ namespace LRCounter.Controllers.Gameplay
 
         private static void EnsureAudioSource()
         {
-            if (_leftSource != null && _rightSource != null) return;
+            if (_sources[0, 0] != null) return;
 
             var go = new GameObject("LRCounter_DropSound");
             UnityEngine.Object.DontDestroyOnLoad(go);
 
-            _leftSource = CreateSource(go);
-            _rightSource = CreateSource(go);
+            for (int hand = 0; hand < 2; hand++)
+                for (int kind = 0; kind < 2; kind++)
+                    _sources[hand, kind] = CreateSource(go);
         }
 
         private static AudioSource CreateSource(GameObject go)
@@ -66,44 +67,41 @@ namespace LRCounter.Controllers.Gameplay
         }
 
         // 精度低下フラッシュと同じタイミングで呼ぶ（設定画面のテスト再生からも呼ばれる）。
-        // 有効/無効の判定は呼び出し側（精度低下・低スコアそれぞれのトグル）で行う。
-        public void Play(bool isLeft)
+        // 有効/無効の判定は呼び出し側（低スコア・ミスそれぞれのトグル）で行う。
+        // isMiss=true でミス用の設定（クリップ・周波数・ピッチ・音量）を使う。
+        public void Play(bool isLeft, bool isMiss = false)
         {
             EnsureAudioSource();
-            AudioSource? source = isLeft ? _leftSource : _rightSource;
+            int hand = isLeft ? 0 : 1;
+            int kind = isMiss ? 1 : 0;
+            AudioSource? source = _sources[hand, kind];
             if (source == null) return;
             if (!source.enabled) source.enabled = true;
 
-            string clipName = isLeft ? _config.DropSoundLeftClip : _config.DropSoundRightClip;
-            float frequency = isLeft ? _config.DropSoundLeftFrequency : _config.DropSoundRightFrequency;
+            string clipName = isMiss
+                ? (isLeft ? _config.DropSoundMissLeftClip : _config.DropSoundMissRightClip)
+                : (isLeft ? _config.DropSoundLeftClip : _config.DropSoundRightClip);
+            float frequency = isMiss
+                ? (isLeft ? _config.DropSoundMissLeftFrequency : _config.DropSoundMissRightFrequency)
+                : (isLeft ? _config.DropSoundLeftFrequency : _config.DropSoundRightFrequency);
             if (string.IsNullOrEmpty(clipName)) clipName = BeepClipName;
 
-            // 設定が変わっていたらその手のクリップを作り直す（ビープは周波数、カスタムはファイル名で判定）
+            // 設定が変わっていたらこの組み合わせのクリップを作り直す（ビープは周波数、カスタムはファイル名で判定）
             string key = clipName == BeepClipName ? $"beep:{frequency}" : $"file:{clipName}";
-            AudioClip? clip;
-            if (isLeft)
+            if (_clips[hand, kind] == null || _clipKeys[hand, kind] != key)
             {
-                if (_leftClip == null || _leftClipKey != key)
-                {
-                    _leftClip = CreateClip(clipName, frequency);
-                    _leftClipKey = key;
-                }
-                clip = _leftClip;
+                _clips[hand, kind] = CreateClip(clipName, frequency);
+                _clipKeys[hand, kind] = key;
             }
-            else
-            {
-                if (_rightClip == null || _rightClipKey != key)
-                {
-                    _rightClip = CreateClip(clipName, frequency);
-                    _rightClipKey = key;
-                }
-                clip = _rightClip;
-            }
+            AudioClip? clip = _clips[hand, kind];
             if (clip == null) return;
 
-            source.volume = Mathf.Clamp01(isLeft ? _config.DropSoundLeftVolume : _config.DropSoundRightVolume);
-            source.pitch = Mathf.Clamp(
-                isLeft ? _config.DropSoundLeftPitch : _config.DropSoundRightPitch, 0.5f, 2.0f);
+            source.volume = Mathf.Clamp01(isMiss
+                ? (isLeft ? _config.DropSoundMissLeftVolume : _config.DropSoundMissRightVolume)
+                : (isLeft ? _config.DropSoundLeftVolume : _config.DropSoundRightVolume));
+            source.pitch = Mathf.Clamp(isMiss
+                ? (isLeft ? _config.DropSoundMissLeftPitch : _config.DropSoundMissRightPitch)
+                : (isLeft ? _config.DropSoundLeftPitch : _config.DropSoundRightPitch), 0.5f, 2.0f);
             // ステレオパン: ONなら左手=左耳のみ(-1)/右手=右耳のみ(+1)、OFFなら中央(0)
             source.panStereo = _config.DropSoundStereoPan ? (isLeft ? -1f : 1f) : 0f;
             source.PlayOneShot(clip, 1.0f);
