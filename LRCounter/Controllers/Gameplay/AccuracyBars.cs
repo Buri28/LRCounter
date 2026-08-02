@@ -160,17 +160,18 @@ namespace LRCounter.Controllers.Gameplay
             bool rightDropped = _prevRightAcc > 0 && rightAcc < _prevRightAcc;
             if (leftDropped) _leftFlashEnd = Time.time + FlashDuration;
             if (rightDropped) _rightFlashEnd = Time.time + FlashDuration;
-            // サウンド: 低スコアカット（平均点より閾値以上低い）とミス・バッドカット。両方満たしても1回だけ鳴る。
+            // サウンド: 低スコアカット（平均点より閾値以上低い）とミス・バッドカット。
+            // 両者は独立した音で、同じ手で同時に成立したら両方鳴る。
             bool leftLowScore = IsNewLowScoreCut(_tracker.LeftTracker, ref _leftPrevCutSerial,
                 ref _leftScoreThresholdMult, ref _leftCutsSinceLowScore);
             bool rightLowScore = IsNewLowScoreCut(_tracker.RightTracker, ref _rightPrevCutSerial,
                 ref _rightScoreThresholdMult, ref _rightCutsSinceLowScore);
             bool leftMiss = IsNewMiss(_tracker.LeftTracker, ref _leftPrevMissCount);
             bool rightMiss = IsNewMiss(_tracker.RightTracker, ref _rightPrevMissCount);
-            if (leftLowScore || leftMiss)
-                TryPlayDropSound(isLeft: true, _tracker.LeftTracker.TotalNotes);
-            if (rightLowScore || rightMiss)
-                TryPlayDropSound(isLeft: false, _tracker.RightTracker.TotalNotes);
+            if (leftLowScore) TryPlayDropSound(isLeft: true, _tracker.LeftTracker.TotalNotes, isMiss: false);
+            if (leftMiss) TryPlayDropSound(isLeft: true, _tracker.LeftTracker.TotalNotes, isMiss: true);
+            if (rightLowScore) TryPlayDropSound(isLeft: false, _tracker.RightTracker.TotalNotes, isMiss: false);
+            if (rightMiss) TryPlayDropSound(isLeft: false, _tracker.RightTracker.TotalNotes, isMiss: true);
             _prevLeftAcc = leftAcc;
             _prevRightAcc = rightAcc;
 
@@ -556,10 +557,10 @@ namespace LRCounter.Controllers.Gameplay
 
         // 鳴らす条件を満たしたときに、序盤の抑制(Warmup)を通過したら鳴らす。
         //   Warmup … その手の合計ノーツ数が DropSoundWarmupNotes 未満の間は鳴らさない（序盤は平均点の変動が激しいため）
-        private void TryPlayDropSound(bool isLeft, int totalNotes)
+        private void TryPlayDropSound(bool isLeft, int totalNotes, bool isMiss)
         {
             if (totalNotes < _config.DropSoundWarmupNotes) return;
-            _dropSound.Play(isLeft);
+            _dropSound.Play(isLeft, isMiss);
         }
 
         // その手で新しいミスまたはバッドカットがあれば true（＝ミスしたら常に鳴る）。
