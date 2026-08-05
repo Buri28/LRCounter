@@ -37,10 +37,15 @@ namespace LRCounter.Controllers.Gameplay
             _config = config;
         }
 
-        // AudioSource が無ければ作る（初回のみ）。曲開始時に呼ぶ
+        // AudioSource が無ければ作る（初回のみ）。曲開始時に呼ぶ。
+        // あわせて4通りのクリップを先に用意しておく（カスタム音のファイル読み込みは
+        // メインスレッドを止めるため、プレイ中の初回再生でフリーズしないよう曲開始時に済ませる）。
         public void Build(Transform _)
         {
             EnsureAudioSource();
+            for (int hand = 0; hand < 2; hand++)
+                for (int kind = 0; kind < 2; kind++)
+                    EnsureClip(hand, kind);
         }
 
         private static void EnsureAudioSource()
@@ -78,22 +83,7 @@ namespace LRCounter.Controllers.Gameplay
             if (source == null) return;
             if (!source.enabled) source.enabled = true;
 
-            string clipName = isMiss
-                ? (isLeft ? _config.DropSoundMissLeftClip : _config.DropSoundMissRightClip)
-                : (isLeft ? _config.DropSoundLeftClip : _config.DropSoundRightClip);
-            float frequency = isMiss
-                ? (isLeft ? _config.DropSoundMissLeftFrequency : _config.DropSoundMissRightFrequency)
-                : (isLeft ? _config.DropSoundLeftFrequency : _config.DropSoundRightFrequency);
-            if (string.IsNullOrEmpty(clipName)) clipName = BeepClipName;
-
-            // 設定が変わっていたらこの組み合わせのクリップを作り直す（ビープは周波数、カスタムはファイル名で判定）
-            string key = clipName == BeepClipName ? $"beep:{frequency}" : $"file:{clipName}";
-            if (_clips[hand, kind] == null || _clipKeys[hand, kind] != key)
-            {
-                _clips[hand, kind] = CreateClip(clipName, frequency);
-                _clipKeys[hand, kind] = key;
-            }
-            AudioClip? clip = _clips[hand, kind];
+            AudioClip? clip = EnsureClip(hand, kind);
             if (clip == null) return;
 
             source.volume = Mathf.Clamp01(isMiss
@@ -105,6 +95,32 @@ namespace LRCounter.Controllers.Gameplay
             // ステレオパン: ONなら左手=左耳のみ(-1)/右手=右耳のみ(+1)、OFFなら中央(0)
             source.panStereo = _config.DropSoundStereoPan ? (isLeft ? -1f : 1f) : 0f;
             source.PlayOneShot(clip, 1.0f);
+        }
+
+        // [hand, kind] のクリップを現在の設定に合わせて用意して返す。
+        // 設定（ビープは周波数、カスタムはファイル名）が変わっていたら作り直し、古いクリップは破棄する。
+        //   hand … 0=左, 1=右 ／ kind … 0=低スコア音, 1=ミス音
+        private AudioClip? EnsureClip(int hand, int kind)
+        {
+            bool isLeft = hand == 0;
+            bool isMiss = kind == 1;
+
+            string clipName = isMiss
+                ? (isLeft ? _config.DropSoundMissLeftClip : _config.DropSoundMissRightClip)
+                : (isLeft ? _config.DropSoundLeftClip : _config.DropSoundRightClip);
+            float frequency = isMiss
+                ? (isLeft ? _config.DropSoundMissLeftFrequency : _config.DropSoundMissRightFrequency)
+                : (isLeft ? _config.DropSoundLeftFrequency : _config.DropSoundRightFrequency);
+            if (string.IsNullOrEmpty(clipName)) clipName = BeepClipName;
+
+            string key = clipName == BeepClipName ? $"beep:{frequency}" : $"file:{clipName}";
+            if (_clips[hand, kind] != null && _clipKeys[hand, kind] == key) return _clips[hand, kind];
+
+            // 作り直す前に古いクリップを破棄する（スクリプト生成のAudioClipは放置すると積み上がるため）
+            if (_clips[hand, kind] != null) UnityEngine.Object.Destroy(_clips[hand, kind]);
+            _clips[hand, kind] = CreateClip(clipName, frequency);
+            _clipKeys[hand, kind] = key;
+            return _clips[hand, kind];
         }
 
         // クリップ名からAudioClipを作る。カスタムファイルの読み込みに失敗したらビープにフォールバック

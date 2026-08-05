@@ -67,7 +67,7 @@ namespace LRCounter.Configuration
         // 続くたび閾値の倍率をx2→x4→x8と倍増する
         public virtual int DropSoundScoreWindowNotes { get; set; } = 5;
         // 倍率の戻し: このノーツ数連続で閾値を上回るたびに倍率を半減する(x8→x4→x2→x1)
-        public virtual int DropSoundScoreRecoverNotes { get; set; } = 20;
+        public virtual int DropSoundScoreRecoverNotes { get; set; } = 10;
         // プレイ序盤は平均点の変動が激しいため、その手の合計ノーツ数がこの値に達するまでは鳴らさない(0=無効)
         public virtual int DropSoundWarmupNotes { get; set; } = 10;
 
