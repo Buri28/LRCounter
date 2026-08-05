@@ -104,13 +104,26 @@ namespace LRCounter.Controllers
 
         // ─── スプライト・マテリアル ──────────────────────────────────────────────────
 
-        // 1x1ピクセルの白いスプライトを生成する（Imageの土台として使用）
+        // 1x1ピクセルの白いスプライト。全Imageで1枚を共有する。
+        // 以前はImageごとにTexture2D+Spriteを生成していたが、スクリプト生成のTexture/Spriteは
+        // GameObjectを破棄しても解放されないため曲ごとに積み上がっていた（リーク）。
+        // また、Imageごとにテクスチャが別インスタンスだとUIのバッチングが効かず、
+        // 表示要素の数だけドローコールが増えていた。共有にして両方を解消する。
+        private static Sprite? _whiteSprite;
+
+        // 共有の白スプライトを返す（初回のみ生成）。破棄されていたら作り直す
         public static Sprite CreateWhiteSprite()
         {
+            if (_whiteSprite != null) return _whiteSprite;
+
             var tex = new Texture2D(1, 1);
+            // シーン遷移で破棄されず、GCの対象にもならないよう明示（常駐の共有リソース）
+            tex.hideFlags = HideFlags.HideAndDontSave;
             tex.SetPixel(0, 0, Color.white);
             tex.Apply();
-            return Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f));
+            _whiteSprite = Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f));
+            _whiteSprite.hideFlags = HideFlags.HideAndDontSave;
+            return _whiteSprite;
         }
 
         // Beat Saber内蔵の「UINoGlow」マテリアル。デフォルトUIマテリアルはブルームを拾って

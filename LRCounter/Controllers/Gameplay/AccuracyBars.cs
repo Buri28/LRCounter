@@ -166,8 +166,10 @@ namespace LRCounter.Controllers.Gameplay
                 ref _leftScoreThresholdMult, ref _leftCutsSinceLowScore);
             bool rightLowScore = IsNewLowScoreCut(_tracker.RightTracker, ref _rightPrevCutSerial,
                 ref _rightScoreThresholdMult, ref _rightCutsSinceLowScore);
-            bool leftMiss = IsNewMiss(_tracker.LeftTracker, ref _leftPrevMissCount);
-            bool rightMiss = IsNewMiss(_tracker.RightTracker, ref _rightPrevMissCount);
+            bool leftMiss = IsNewMiss(_tracker.LeftTracker, ref _leftPrevMissCount,
+                ref _leftScoreThresholdMult, ref _leftCutsSinceLowScore);
+            bool rightMiss = IsNewMiss(_tracker.RightTracker, ref _rightPrevMissCount,
+                ref _rightScoreThresholdMult, ref _rightCutsSinceLowScore);
             if (leftLowScore) TryPlayDropSound(isLeft: true, _tracker.LeftTracker.TotalNotes, isMiss: false);
             if (leftMiss) TryPlayDropSound(isLeft: true, _tracker.LeftTracker.TotalNotes, isMiss: true);
             if (rightLowScore) TryPlayDropSound(isLeft: false, _tracker.RightTracker.TotalNotes, isMiss: false);
@@ -563,15 +565,31 @@ namespace LRCounter.Controllers.Gameplay
             _dropSound.Play(isLeft, isMiss);
         }
 
-        // その手で新しいミスまたはバッドカットがあれば true（＝ミスしたら常に鳴る）。
-        // 低スコア音とは完全に独立で、閾値倍率には一切関与しない。
+        // その手で新しいミスまたはバッドカットがあれば true（＝ミスなら倍率に関係なく毎回鳴る）。
+        // ただしミスも「低下」の一種として低スコア音の閾値倍率は上げる（難所で低スコア音を鳴らさないため）。
         // カウントの追従は無効時も行い、有効化直後に過去のミスで鳴らないようにする。
-        private bool IsNewMiss(HandPPTracker tracker, ref int prevMissCount)
+        private bool IsNewMiss(HandPPTracker tracker, ref int prevMissCount,
+            ref int thresholdMult, ref int cutsSinceLowScore)
         {
             int missCount = tracker.MissedNotes + tracker.BadCuts;
             bool isNew = missCount > prevMissCount;
             prevMissCount = missCount;
+            if (isNew)
+            {
+                EscalateThreshold(ref thresholdMult, cutsSinceLowScore);
+                cutsSinceLowScore = 0;
+            }
             return _config.DropSoundMissEnabled && isNew;
+        }
+
+        // 低下（低スコアカット・ミス）が起きたときの閾値倍率の引き上げ。
+        // x1（＝低スコア音が鳴りうる状態）は間隔によらず必ずx2へ。
+        // x2以降は直近mノーツ(DropSoundScoreWindowNotes)以内に続けて低下したときだけさらに倍増する。
+        private void EscalateThreshold(ref int thresholdMult, int cutsSinceLowScore)
+        {
+            if ((thresholdMult == 1 || cutsSinceLowScore < _config.DropSoundScoreWindowNotes)
+                && thresholdMult < ScoreThresholdMaxMult)
+                thresholdMult *= 2;
         }
 
         // 低スコア閾値の自動拡大の倍率上限。倍々(x2,x4,…,x1024)でここまで拡大したら頭打ちにする
@@ -584,9 +602,12 @@ namespace LRCounter.Controllers.Gameplay
         //   x1で実効閾値を下回ったら音を鳴らし、間隔によらず即x2に上げる。
         //   x2以降は、直近mノーツ(DropSoundScoreWindowNotes)以内に続けて下回ったときだけ
         //   x4→x8→x16→…とさらに倍増する（このとき音は鳴らない）。
-        //   実効閾値をrノーツ(DropSoundScoreRecoverNotes)連続で上回るたびに倍率を半減して
-        //   x8→x4→x2→x1と段階的に戻す。
+        //   戻し（半減）は「1段下の倍率」を基準に判定する。倍率xM のとき、
+        //   平均-基準点×(M/2) を r×(M/2) ノーツ連続で上回れたら x(M/2) に戻す
+        //   （r=10なら x2は10回、x4は閾値x2で20回、x8は閾値x4で40回）。途中で1回でも割ったら数え直し。
+        //   難所ほど戻りにくく＝鳴りにくくなる。
         //   鳴るのは倍率x1のときの低下だけなので、鳴る間隔は最短でもrノーツ空く。
+        //   ミス・バッドカットも低下として倍率を上げる（IsNewMiss）。
         private bool IsNewLowScoreCut(HandPPTracker tracker, ref int prevSerial,
             ref int thresholdMult, ref int cutsSinceLowScore)
         {
@@ -602,23 +623,37 @@ namespace LRCounter.Controllers.Gameplay
             bool ring = breach && thresholdMult == 1;
             if (breach)
             {
-                // x1（＝音が鳴る低下）は間隔によらず必ずx2に上げる。鳴った直後は必ず倍率が上がるので、
-                // 回復(rノーツ)でx1に戻るまで次は鳴らない。
-                // x2以降のさらなる倍増は、直近mノーツ以内に連続で下回ったときだけ（連発時の抑制強化）。
-                if ((thresholdMult == 1 || cutsSinceLowScore < _config.DropSoundScoreWindowNotes)
-                    && thresholdMult < ScoreThresholdMaxMult)
-                    thresholdMult *= 2;
+                EscalateThreshold(ref thresholdMult, cutsSinceLowScore);
                 cutsSinceLowScore = 0;
+            }
+            else if (thresholdMult > 1)
+            {
+                // 回復判定は「1段下の倍率」で行う（x4なら x2 相当の厳しい閾値をクリアし続ける必要がある）。
+                // 必要な連続数も同じく1段下の倍率倍にするので、倍率が高いほど戻りにくい:
+                //   x2 → r回、x4 → r×2回、x8 → r×4回 …
+                int prevMult = thresholdMult / 2;
+                bool aboveRecoverLine = tracker.LastCutScore
+                    >= tracker.AverageCutScore - _config.DropSoundScoreThreshold * prevMult;
+                if (!aboveRecoverLine)
+                {
+                    // 1段下の閾値は割っている（＝まだ安定していない）。連続カウントは振り出しに戻す
+                    cutsSinceLowScore = 0;
+                }
+                else
+                {
+                    cutsSinceLowScore++;
+                    int recover = _config.DropSoundScoreRecoverNotes;
+                    if (recover > 0 && cutsSinceLowScore >= recover * prevMult)
+                    {
+                        thresholdMult = prevMult;
+                        cutsSinceLowScore = 0;
+                    }
+                }
             }
             else
             {
-                // rノーツ連続で実効閾値を上回るたびに倍率を半減(x8→x4→x2→x1)。
-                // カウンタはFarPastで頭打ちだが、必要な半減回数(最大10回)×r(最大20)は
-                // FarPast(1000)より小さいので、頭打ち前に必ずx1まで戻り切る。
+                // x1のときは倍増ウィンドウ判定用に「前回の低下からのノーツ数」を数えるだけ
                 if (cutsSinceLowScore < FarPast) cutsSinceLowScore++;
-                int recover = _config.DropSoundScoreRecoverNotes;
-                if (thresholdMult > 1 && recover > 0 && cutsSinceLowScore % recover == 0)
-                    thresholdMult /= 2;
             }
             // 音は倍率x1のときの低下だけ鳴らす。鳴った時点で倍率がx2に上がるので、
             // 回復でx1に戻るまで（最短rノーツ）は次が鳴らない
