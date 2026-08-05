@@ -130,14 +130,14 @@ namespace LRCounter.Controllers.Settings
         public float DropSoundLeftFrequency
         {
             get => _config.DropSoundLeftFrequency;
-            set { _config.DropSoundLeftFrequency = value; _config.Changed(); }
+            set { _config.DropSoundLeftFrequency = value; _config.Changed(); PrewarmDropSounds(); }
         }
 
         [UIValue("drop-sound-right-freq")]
         public float DropSoundRightFrequency
         {
             get => _config.DropSoundRightFrequency;
-            set { _config.DropSoundRightFrequency = value; _config.Changed(); }
+            set { _config.DropSoundRightFrequency = value; _config.Changed(); PrewarmDropSounds(); }
         }
 
         [UIValue("drop-sound-score-threshold")]
@@ -185,14 +185,14 @@ namespace LRCounter.Controllers.Settings
         public string DropSoundLeftClip
         {
             get => _config.DropSoundLeftClip;
-            set { _config.DropSoundLeftClip = value; _config.Changed(); }
+            set { _config.DropSoundLeftClip = value; _config.Changed(); PrewarmDropSounds(); }
         }
 
         [UIValue("drop-sound-right-clip")]
         public string DropSoundRightClip
         {
             get => _config.DropSoundRightClip;
-            set { _config.DropSoundRightClip = value; _config.Changed(); }
+            set { _config.DropSoundRightClip = value; _config.Changed(); PrewarmDropSounds(); }
         }
 
         [UIValue("drop-sound-left-pitch")]
@@ -215,28 +215,28 @@ namespace LRCounter.Controllers.Settings
         public string DropSoundMissLeftClip
         {
             get => _config.DropSoundMissLeftClip;
-            set { _config.DropSoundMissLeftClip = value; _config.Changed(); }
+            set { _config.DropSoundMissLeftClip = value; _config.Changed(); PrewarmDropSounds(); }
         }
 
         [UIValue("drop-sound-miss-right-clip")]
         public string DropSoundMissRightClip
         {
             get => _config.DropSoundMissRightClip;
-            set { _config.DropSoundMissRightClip = value; _config.Changed(); }
+            set { _config.DropSoundMissRightClip = value; _config.Changed(); PrewarmDropSounds(); }
         }
 
         [UIValue("drop-sound-miss-left-freq")]
         public float DropSoundMissLeftFrequency
         {
             get => _config.DropSoundMissLeftFrequency;
-            set { _config.DropSoundMissLeftFrequency = value; _config.Changed(); }
+            set { _config.DropSoundMissLeftFrequency = value; _config.Changed(); PrewarmDropSounds(); }
         }
 
         [UIValue("drop-sound-miss-right-freq")]
         public float DropSoundMissRightFrequency
         {
             get => _config.DropSoundMissRightFrequency;
-            set { _config.DropSoundMissRightFrequency = value; _config.Changed(); }
+            set { _config.DropSoundMissRightFrequency = value; _config.Changed(); PrewarmDropSounds(); }
         }
 
         [UIValue("drop-sound-miss-left-pitch")]
@@ -267,9 +267,18 @@ namespace LRCounter.Controllers.Settings
             set { _config.DropSoundMissRightVolume = value; _config.Changed(); }
         }
 
-        // ———— テスト再生 ————
+        // ———— テスト再生・クリップ準備 ————
         // 実際の再生と同じ DropSoundPlayer を使い、現在の設定（クリップ・音量・周波数・ピッチ）で鳴らす
         private DropSoundPlayer? _testPlayer;
+
+        // クリップ設定（音源・周波数）が変わったら、その場で新しいクリップを用意しておく。
+        // カスタム音の読み込みは非同期なのでここでフレームは飛ばない。設定画面で済ませておくことで、
+        // プレイ中に読み込みが走って初回が鳴らない、という事態を避ける。
+        private void PrewarmDropSounds()
+        {
+            _testPlayer ??= new DropSoundPlayer(_config);
+            _testPlayer.Prewarm();
+        }
 
         [UIAction("test-left")]
         public void TestLeftSound()
@@ -543,6 +552,7 @@ namespace LRCounter.Controllers.Settings
             _config.BorderColorPP = d.BorderColorPP;
             _config.BorderColorHandBest = d.BorderColorHandBest;
             _config.Changed();
+            PrewarmDropSounds(); // 音源・周波数も既定に戻るのでクリップを作り直しておく
 
             NotifyPropertyChanged(nameof(Enabled));
             NotifyPropertyChanged(nameof(TextSize));

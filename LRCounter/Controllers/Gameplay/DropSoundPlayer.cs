@@ -1,5 +1,6 @@
 using LRCounter.Configuration;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -28,6 +29,11 @@ namespace LRCounter.Controllers.Gameplay
         private static readonly AudioSource?[,] _sources = new AudioSource?[2, 2];
         private static readonly AudioClip?[,] _clips = new AudioClip?[2, 2];
         private static readonly string[,] _clipKeys = { { "", "" }, { "", "" } };
+        // カスタム音を非同期読み込み中のキー（""=読み込み中でない）。二重に読み込みを走らせないための印
+        private static readonly string[,] _loadingKeys = { { "", "" }, { "", "" } };
+
+        // コルーチン（カスタム音の非同期読み込み）の実行役。常駐 GameObject に付けるので曲をまたいで生き残る
+        private static SoundRunner? _runner;
 
         // 生成ビープ音を表す設定値（これ以外はUserData/LRCounter/Soundのファイル名として扱う）
         public const string BeepClipName = "beep";
@@ -38,9 +44,19 @@ namespace LRCounter.Controllers.Gameplay
         }
 
         // AudioSource が無ければ作る（初回のみ）。曲開始時に呼ぶ。
-        // あわせて4通りのクリップを先に用意しておく（カスタム音のファイル読み込みは
-        // メインスレッドを止めるため、プレイ中の初回再生でフリーズしないよう曲開始時に済ませる）。
+        // あわせて4通りのクリップを先に用意する。ビープの生成は数千サンプルのループだけで軽い。
+        // カスタム音のファイル読み込みは重いが、非同期（コルーチン）なのでフレームを止めない。
+        // どちらもクリップは static にキャッシュされるので、実際に走るのは
+        // ゲーム起動後の初回と設定変更後の1回だけで、毎曲のコストにはならない。
         public void Build(Transform _)
+        {
+            Prewarm();
+        }
+
+        // 4通りのクリップを事前に用意する。メニュー（選曲画面）到達時にも呼ばれるので、
+        // 通常はプレイ画面に入る前に準備が終わっている。クリップは static キャッシュなので
+        // ここで済ませておけば曲開始時の Build は何もしない。
+        public void Prewarm()
         {
             EnsureAudioSource();
             for (int hand = 0; hand < 2; hand++)
@@ -54,11 +70,15 @@ namespace LRCounter.Controllers.Gameplay
 
             var go = new GameObject("LRCounter_DropSound");
             UnityEngine.Object.DontDestroyOnLoad(go);
+            _runner = go.AddComponent<SoundRunner>();
 
             for (int hand = 0; hand < 2; hand++)
                 for (int kind = 0; kind < 2; kind++)
                     _sources[hand, kind] = CreateSource(go);
         }
+
+        // コルーチンを回すためだけの MonoBehaviour（常駐 GameObject に付く）
+        private class SoundRunner : MonoBehaviour { }
 
         private static AudioSource CreateSource(GameObject go)
         {
@@ -97,8 +117,9 @@ namespace LRCounter.Controllers.Gameplay
             source.PlayOneShot(clip, 1.0f);
         }
 
-        // [hand, kind] のクリップを現在の設定に合わせて用意して返す。
+        // [hand, kind] のクリップを現在の設定に合わせて用意して返す。まだ用意できていなければ null。
         // 設定（ビープは周波数、カスタムはファイル名）が変わっていたら作り直し、古いクリップは破棄する。
+        // ビープはその場で生成（軽い）、カスタム音はコルーチンで非同期に読み込む（重いのでフレームを止めない）。
         //   hand … 0=左, 1=右 ／ kind … 0=低スコア音, 1=ミス音
         private AudioClip? EnsureClip(int hand, int kind)
         {
@@ -116,18 +137,30 @@ namespace LRCounter.Controllers.Gameplay
             string key = clipName == BeepClipName ? $"beep:{frequency}" : $"file:{clipName}";
             if (_clips[hand, kind] != null && _clipKeys[hand, kind] == key) return _clips[hand, kind];
 
-            // 作り直す前に古いクリップを破棄する（スクリプト生成のAudioClipは放置すると積み上がるため）
-            if (_clips[hand, kind] != null) UnityEngine.Object.Destroy(_clips[hand, kind]);
-            _clips[hand, kind] = CreateClip(clipName, frequency);
-            _clipKeys[hand, kind] = key;
-            return _clips[hand, kind];
+            if (clipName == BeepClipName)
+            {
+                SetClip(hand, kind, key, CreateBeep(frequency));
+                return _clips[hand, kind];
+            }
+
+            // カスタム音: 読み込みが終わるまで鳴らせるクリップは無い（null を返す）。
+            // 同じキーの読み込みが進行中なら二重には走らせない。
+            if (_loadingKeys[hand, kind] != key)
+            {
+                _loadingKeys[hand, kind] = key;
+                if (_runner != null)
+                    _runner.StartCoroutine(LoadCustomClipCoroutine(hand, kind, key, clipName, frequency));
+            }
+            return null;
         }
 
-        // クリップ名からAudioClipを作る。カスタムファイルの読み込みに失敗したらビープにフォールバック
-        private static AudioClip CreateClip(string clipName, float frequency)
+        // 読み込み・生成が済んだクリップを所定の枠に収める。古いクリップは破棄する
+        // （スクリプト生成のAudioClipは放置すると積み上がるため）
+        private static void SetClip(int hand, int kind, string key, AudioClip clip)
         {
-            if (clipName == BeepClipName) return CreateBeep(frequency);
-            return LoadCustomClip(clipName) ?? CreateBeep(frequency);
+            if (_clips[hand, kind] != null) UnityEngine.Object.Destroy(_clips[hand, kind]);
+            _clips[hand, kind] = clip;
+            _clipKeys[hand, kind] = key;
         }
 
         // ─── カスタムサウンド（UserData/LRCounter の wav/ogg/mp3） ───────────────────
@@ -170,8 +203,8 @@ namespace LRCounter.Controllers.Gameplay
             }
         }
 
-        // UserData/LRCounter/Sound から拡張子を総当たりでファイルを探して読み込む。見つからなければ null
-        private static AudioClip? LoadCustomClip(string clipName)
+        // UserData/LRCounter/Sound から拡張子を総当たりでファイルを探す。見つからなければ null
+        private static string? FindSoundFile(string clipName)
         {
             string? folder = GetSoundFolder();
             if (folder == null) return null;
@@ -179,51 +212,74 @@ namespace LRCounter.Controllers.Gameplay
             foreach (var ext in AudioExtensions)
             {
                 string filePath = Path.Combine(folder, clipName + ext);
-                if (File.Exists(filePath)) return LoadAudioClipViaWeb(filePath);
+                if (File.Exists(filePath)) return filePath;
             }
             Plugin.Log?.Warn($"[LRCounter] Custom sound '{clipName}' not found in {folder}");
             return null;
         }
 
-        // UnityWebRequest でローカルのオーディオファイルを同期読み込みする（WallHitSound と同方式）。
-        // 一度読み込んだらキャッシュされるので待ちが発生するのは設定変更後の初回再生のみ
-        private static AudioClip? LoadAudioClipViaWeb(string filePath)
+        // カスタム音を UnityWebRequest で非同期に読み込んで所定の枠に収める。
+        // 以前はメインスレッドを Thread.Sleep で最大5秒止めていたが、それだと読み込みが走る
+        // フレームが確実に飛ぶため、コルーチンで待つ方式にした。読み込み中はそのクリップだけ
+        // 鳴らない（EnsureClip が null を返す）が、フレームレートには影響しない。
+        // ファイルが無い・読み込みに失敗した場合はビープにフォールバックする。
+        private static IEnumerator LoadCustomClipCoroutine(int hand, int kind, string key,
+            string clipName, float frequency)
         {
-            try
+            string? filePath = FindSoundFile(clipName);
+            if (filePath == null)
             {
-                string ext = Path.GetExtension(filePath).ToLowerInvariant();
-                AudioType audioType = ext switch
-                {
-                    ".wav" => AudioType.WAV,
-                    ".ogg" => AudioType.OGGVORBIS,
-                    ".mp3" => AudioType.MPEG,
-                    _ => AudioType.UNKNOWN,
-                };
-                string uriPath = "file:///" + filePath.Replace("\\", "/");
+                FinishLoad(hand, kind, key, CreateBeep(frequency));
+                yield break;
+            }
 
-                using var request = UnityWebRequestMultimedia.GetAudioClip(uriPath, audioType);
-                var task = request.SendWebRequest();
+            string ext = Path.GetExtension(filePath).ToLowerInvariant();
+            AudioType audioType = ext switch
+            {
+                ".wav" => AudioType.WAV,
+                ".ogg" => AudioType.OGGVORBIS,
+                ".mp3" => AudioType.MPEG,
+                _ => AudioType.UNKNOWN,
+            };
+            string uriPath = "file:///" + filePath.Replace("\\", "/");
 
-                // 読み込み完了まで待機（タイムアウト約5秒）
-                int timeoutCounter = 0;
-                while (!task.isDone && timeoutCounter < 500)
-                {
-                    System.Threading.Thread.Sleep(10);
-                    timeoutCounter++;
-                }
+            AudioClip? loaded = null;
+            using (var request = UnityWebRequestMultimedia.GetAudioClip(uriPath, audioType))
+            {
+                yield return request.SendWebRequest();
 
                 if (request.result == UnityWebRequest.Result.Success)
                 {
-                    AudioClip? clip = DownloadHandlerAudioClip.GetContent(request);
-                    if (clip != null) return clip;
+                    // GetContent は例外を投げうるので、コルーチンで yield を挟まない範囲だけ try で囲む
+                    try
+                    {
+                        loaded = DownloadHandlerAudioClip.GetContent(request);
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.Log?.Warn($"[LRCounter] Error loading audio '{filePath}': {ex.Message}");
+                    }
                 }
-                Plugin.Log?.Warn($"[LRCounter] Failed to load audio '{filePath}': {request.error}");
+                else
+                {
+                    Plugin.Log?.Warn($"[LRCounter] Failed to load audio '{filePath}': {request.error}");
+                }
             }
-            catch (Exception ex)
+
+            FinishLoad(hand, kind, key, loaded ?? CreateBeep(frequency));
+        }
+
+        // 非同期読み込みの完了処理。待っている間に設定が変わっていたら結果は捨てる
+        private static void FinishLoad(int hand, int kind, string key, AudioClip clip)
+        {
+            if (_loadingKeys[hand, kind] != key)
             {
-                Plugin.Log?.Warn($"[LRCounter] Error loading audio '{filePath}': {ex.Message}");
+                // 読み込み中に別のクリップへ切り替わった。この結果はもう使わない
+                UnityEngine.Object.Destroy(clip);
+                return;
             }
-            return null;
+            _loadingKeys[hand, kind] = "";
+            SetClip(hand, kind, key, clip);
         }
 
         // 指定周波数の正弦波ビープを生成する（約0.12秒・クリックノイズ防止の簡易フェード付き）
