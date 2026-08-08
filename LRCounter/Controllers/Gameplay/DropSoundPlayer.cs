@@ -61,6 +61,9 @@ namespace LRCounter.Controllers.Gameplay
         // 生成ビープ音を表す設定値（これ以外はUserData/LRCounter/Soundのファイル名として扱う）
         public const string BeepClipName = "beep";
 
+        // フェイル音の「鳴らさない」を表す設定値（＝既定値。ドロップダウンの先頭の空欄項目）
+        public const string NoneClipName = "";
+
         public DropSoundPlayer(PluginConfig config)
         {
             _config = config;
@@ -136,10 +139,8 @@ namespace LRCounter.Controllers.Gameplay
             PlayKind(hand, kind, volume, pitch, pan);
         }
 
-        // フェイル音を鳴らす状態か。トグルがONで、かつサウンドが選ばれている（空欄でない）とき。
-        // 既定は「OFF・サウンド未設定」なので、ONにしても空欄のままなら鳴らない。
-        public bool IsFailSoundSet =>
-            _config.DropSoundFailEnabled && !string.IsNullOrEmpty(_config.DropSoundFailClip);
+        // フェイル音のサウンドが選ばれているか（既定の空欄なら鳴らさない）
+        public bool IsFailSoundSet => !string.IsNullOrEmpty(_config.DropSoundFailClip);
 
         // フェイル（体力0）時に1回だけ鳴らす音。設定できるのはサウンド（クリップ）だけなので、
         // 音量・ピッチは固定、パンは中央（左右の区別が無い音なので）。

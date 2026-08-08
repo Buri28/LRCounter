@@ -267,23 +267,18 @@ namespace LRCounter.Controllers.Settings
             set { _config.DropSoundMissRightVolume = value; _config.Changed(); }
         }
 
-        // ———— フェイル音（ON/OFF と サウンドのみ設定できる） ————
-        // 先頭に空欄（サウンド未設定＝ONにしても鳴らない）を足した選択肢
+        // ———— フェイル音（設定できるのはサウンドのみ） ————
+        // ON/OFFトグルは持たず、空欄（既定・先頭項目）以外を選んだときだけ鳴る。
+        // ビープは選べないので、選択肢は "None" + カスタムサウンドのみ。
         [UIValue("fail-sound-options")]
         public List<object> FailSoundOptions { get; } = BuildFailSoundOptions();
 
         private static List<object> BuildFailSoundOptions()
         {
-            var options = new List<object> { "" };
-            options.AddRange(BuildSoundOptions());
+            var options = new List<object> { DropSoundPlayer.NoneClipName };
+            foreach (var name in DropSoundPlayer.GetCustomSoundNames())
+                options.Add(name);
             return options;
-        }
-
-        [UIValue("drop-sound-fail-enabled")]
-        public bool DropSoundFailEnabled
-        {
-            get => _config.DropSoundFailEnabled;
-            set { _config.DropSoundFailEnabled = value; _config.Changed(); PrewarmDropSounds(); }
         }
 
         [UIValue("drop-sound-fail-clip")]
@@ -568,7 +563,6 @@ namespace LRCounter.Controllers.Settings
             _config.DropSoundMissRightPitch = d.DropSoundMissRightPitch;
             _config.DropSoundMissLeftVolume = d.DropSoundMissLeftVolume;
             _config.DropSoundMissRightVolume = d.DropSoundMissRightVolume;
-            _config.DropSoundFailEnabled = d.DropSoundFailEnabled;
             _config.DropSoundFailClip = d.DropSoundFailClip;
             _config.DropSoundMissStopAfterFail = d.DropSoundMissStopAfterFail;
             _config.DepthZ = d.DepthZ;
@@ -630,7 +624,6 @@ namespace LRCounter.Controllers.Settings
             NotifyPropertyChanged(nameof(DropSoundMissRightPitch));
             NotifyPropertyChanged(nameof(DropSoundMissLeftVolume));
             NotifyPropertyChanged(nameof(DropSoundMissRightVolume));
-            NotifyPropertyChanged(nameof(DropSoundFailEnabled));
             NotifyPropertyChanged(nameof(DropSoundFailClip));
             NotifyPropertyChanged(nameof(DropSoundMissStopAfterFail));
             NotifyPropertyChanged(nameof(DepthZ));
