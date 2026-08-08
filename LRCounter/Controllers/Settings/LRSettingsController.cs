@@ -269,7 +269,7 @@ namespace LRCounter.Controllers.Settings
 
         // ———— フェイル音（設定できるのはサウンドのみ） ————
         // ON/OFFトグルは持たず、空欄（既定・先頭項目）以外を選んだときだけ鳴る。
-        // ビープは選べないので、選択肢は "None" + カスタムサウンドのみ。
+        // ビープは選べないので、選択肢は空欄（＝鳴らさない）+ カスタムサウンドのみ。
         [UIValue("fail-sound-options")]
         public List<object> FailSoundOptions { get; } = BuildFailSoundOptions();
 
@@ -284,7 +284,11 @@ namespace LRCounter.Controllers.Settings
         [UIValue("drop-sound-fail-clip")]
         public string DropSoundFailClip
         {
-            get => _config.DropSoundFailClip;
+            // 旧バージョンの設定ファイルに残った "beep"/"none" は選択肢に無いので、
+            // 空欄（＝鳴らさない）として返す。ドロップダウンの初期選択が外れないように。
+            get => DropSoundPlayer.IsFailSoundName(_config.DropSoundFailClip)
+                ? _config.DropSoundFailClip
+                : DropSoundPlayer.NoneClipName;
             set { _config.DropSoundFailClip = value; _config.Changed(); PrewarmDropSounds(); }
         }
 

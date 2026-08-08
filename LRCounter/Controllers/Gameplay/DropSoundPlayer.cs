@@ -64,6 +64,14 @@ namespace LRCounter.Controllers.Gameplay
         // フェイル音の「鳴らさない」を表す設定値（＝既定値。ドロップダウンの先頭の空欄項目）
         public const string NoneClipName = "";
 
+        // フェイル音としてサウンドが選ばれている名前か。
+        // フェイル音ではビープを選べないので、空欄に加えて旧バージョンの既定値だった
+        // "beep"／"none" が設定ファイルに残っている場合も「未設定」として扱う（勝手に鳴らないように）。
+        public static bool IsFailSoundName(string? clipName) =>
+            !string.IsNullOrEmpty(clipName) &&
+            !string.Equals(clipName, BeepClipName, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(clipName, "none", StringComparison.OrdinalIgnoreCase);
+
         public DropSoundPlayer(PluginConfig config)
         {
             _config = config;
@@ -100,6 +108,8 @@ namespace LRCounter.Controllers.Gameplay
             UnityEngine.Object.DontDestroyOnLoad(go);
             _runner = go.AddComponent<SoundRunner>();
 
+            // [1, KindFail] のソースは使わない（フェイル音は左右共通で hand=0 の枠だけ使う）が、
+            // 添字を素直に保つため全枠ぶん作る。AudioSource 1つぶんなので無視できる
             for (int hand = 0; hand < 2; hand++)
                 for (int kind = 0; kind < KindCount; kind++)
                     _sources[hand, kind] = CreateSource(go);
@@ -140,7 +150,7 @@ namespace LRCounter.Controllers.Gameplay
         }
 
         // フェイル音のサウンドが選ばれているか（既定の空欄なら鳴らさない）
-        public bool IsFailSoundSet => !string.IsNullOrEmpty(_config.DropSoundFailClip);
+        public bool IsFailSoundSet => IsFailSoundName(_config.DropSoundFailClip);
 
         // フェイル（体力0）時に1回だけ鳴らす音。設定できるのはサウンド（クリップ）だけなので、
         // 音量・ピッチは固定、パンは中央（左右の区別が無い音なので）。
@@ -200,6 +210,7 @@ namespace LRCounter.Controllers.Gameplay
                     ? (isLeft ? _config.DropSoundMissLeftFrequency : _config.DropSoundMissRightFrequency)
                     : (isLeft ? _config.DropSoundLeftFrequency : _config.DropSoundRightFrequency);
             }
+            // 低スコア音・ミス音は未設定ならビープ扱い（フェイル音は上で早期 return 済みなので通らない）
             if (string.IsNullOrEmpty(clipName)) clipName = BeepClipName;
 
             string key = clipName == BeepClipName ? $"beep:{frequency}" : $"file:{clipName}";
@@ -213,11 +224,11 @@ namespace LRCounter.Controllers.Gameplay
 
             // カスタム音: 読み込みが終わるまで鳴らせるクリップは無い（null を返す）。
             // 同じキーの読み込みが進行中なら二重には走らせない。
-            if (_loadingKeys[hand, kind] != key)
+            // 実行役がいないときは印を立てない（立てるとその枠が二度と読み込まれなくなるため）。
+            if (_loadingKeys[hand, kind] != key && _runner != null)
             {
                 _loadingKeys[hand, kind] = key;
-                if (_runner != null)
-                    _runner.StartCoroutine(LoadCustomClipCoroutine(hand, kind, key, clipName, frequency));
+                _runner.StartCoroutine(LoadCustomClipCoroutine(hand, kind, key, clipName, frequency));
             }
             return null;
         }
@@ -226,7 +237,7 @@ namespace LRCounter.Controllers.Gameplay
         // （スクリプト生成のAudioClipは放置すると積み上がるため）
         private static void SetClip(int hand, int kind, string key, AudioClip clip)
         {
-            if (_clips[hand, kind] != null) UnityEngine.Object.Destroy(_clips[hand, kind]);
+            DestroyOldClip(hand, kind);
             _clips[hand, kind] = clip;
             _clipKeys[hand, kind] = key;
         }
@@ -235,10 +246,32 @@ namespace LRCounter.Controllers.Gameplay
         // 読み込み中の印も消すので、進行中の非同期読み込みの結果は FinishLoad で捨てられる。
         private static void ReleaseClip(int hand, int kind)
         {
-            if (_clips[hand, kind] != null) UnityEngine.Object.Destroy(_clips[hand, kind]);
+            DestroyOldClip(hand, kind);
             _clips[hand, kind] = null;
             _clipKeys[hand, kind] = "";
             _loadingKeys[hand, kind] = "";
+        }
+
+        // 枠にある古いクリップを破棄する。まだ鳴っている最中なら鳴り終わるまで破棄を遅らせる
+        // （設定画面でテスト再生した直後にサウンドを変える、といった操作で踏みうるため）。
+        private static void DestroyOldClip(int hand, int kind)
+        {
+            AudioClip? old = _clips[hand, kind];
+            if (old == null) return;
+
+            AudioSource? source = _sources[hand, kind];
+            bool playing = source != null && source.isPlaying;
+            if (playing)
+            {
+                // PlayOneShot の再生時間はピッチで縮む。余裕をみて少し長めに待つ
+                float pitch = source!.pitch > 0.01f ? source.pitch : 1f;
+                UnityEngine.Object.Destroy(old, old.length / pitch + 0.5f);
+            }
+            else
+            {
+                UnityEngine.Object.Destroy(old);
+            }
+            _clips[hand, kind] = null;
         }
 
         // ─── カスタムサウンド（UserData/LRCounter の wav/ogg/mp3） ───────────────────
@@ -301,13 +334,14 @@ namespace LRCounter.Controllers.Gameplay
         // フレームが確実に飛ぶため、コルーチンで待つ方式にした。読み込み中はそのクリップだけ
         // 鳴らない（EnsureClip が null を返す）が、フレームレートには影響しない。
         // ファイルが無い・読み込みに失敗した場合はビープにフォールバックする。
+        // ただしフェイル音はビープを選べない設定なので、フォールバックせず無音のままにする。
         private static IEnumerator LoadCustomClipCoroutine(int hand, int kind, string key,
             string clipName, float frequency)
         {
             string? filePath = FindSoundFile(clipName);
             if (filePath == null)
             {
-                FinishLoad(hand, kind, key, CreateBeep(frequency));
+                FinishLoad(hand, kind, key, Fallback(kind, frequency));
                 yield break;
             }
 
@@ -344,20 +378,27 @@ namespace LRCounter.Controllers.Gameplay
                 }
             }
 
-            FinishLoad(hand, kind, key, loaded ?? CreateBeep(frequency));
+            FinishLoad(hand, kind, key, loaded ?? Fallback(kind, frequency));
         }
 
-        // 非同期読み込みの完了処理。待っている間に設定が変わっていたら結果は捨てる
-        private static void FinishLoad(int hand, int kind, string key, AudioClip clip)
+        // 読み込みに失敗したときの代わりのクリップ。低スコア音・ミス音はビープで代用するが、
+        // フェイル音はビープを選べない設定なので代用せず無音（null）にする
+        private static AudioClip? Fallback(int kind, float frequency) =>
+            kind == KindFail ? null : CreateBeep(frequency);
+
+        // 非同期読み込みの完了処理。待っている間に設定が変わっていたら結果は捨てる。
+        // clip が null（フェイル音の読み込み失敗）なら枠を空にする
+        private static void FinishLoad(int hand, int kind, string key, AudioClip? clip)
         {
             if (_loadingKeys[hand, kind] != key)
             {
                 // 読み込み中に別のクリップへ切り替わった。この結果はもう使わない
-                UnityEngine.Object.Destroy(clip);
+                if (clip != null) UnityEngine.Object.Destroy(clip);
                 return;
             }
             _loadingKeys[hand, kind] = "";
-            SetClip(hand, kind, key, clip);
+            if (clip == null) ReleaseClip(hand, kind);
+            else SetClip(hand, kind, key, clip);
         }
 
         // 指定周波数の正弦波ビープを生成する（約0.12秒・クリックノイズ防止の簡易フェード付き）
