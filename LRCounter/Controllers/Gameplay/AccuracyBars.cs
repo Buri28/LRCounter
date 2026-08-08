@@ -566,12 +566,13 @@ namespace LRCounter.Controllers.Gameplay
             accLabel.text = bestAcc > 0 ? $"PB:{bestAcc * 100.0:F1}%" : "";
         }
 
-        // 鳴らす条件を満たしたときに、序盤の抑制(Warmup)を通過したら鳴らす。
-        //   Warmup … その手の合計ノーツ数が DropSoundWarmupNotes 未満の間は鳴らさない（序盤は平均点の変動が激しいため）
+        // 鳴らす条件を満たしたときに、抑制条件を通過したら鳴らす。
+        //   Warmup … 低スコア音だけの抑制。その手の合計ノーツ数が DropSoundWarmupNotes 未満の間は
+        //             鳴らさない（序盤は平均点の変動が激しいため）。ミス音は平均点と無関係なので対象外。
         //   フェイル後の抑制 … ミス音は DropSoundMissStopAfterFail がONならフェイル後は鳴らさない
         private void TryPlayDropSound(bool isLeft, int totalNotes, bool isMiss)
         {
-            if (totalNotes < _config.DropSoundWarmupNotes) return;
+            if (!isMiss && totalNotes < _config.DropSoundWarmupNotes) return;
             if (isMiss && _config.DropSoundMissStopAfterFail && _tracker.Failed) return;
             _dropSound.Play(isLeft, isMiss);
         }
