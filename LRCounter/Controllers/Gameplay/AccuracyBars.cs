@@ -62,6 +62,8 @@ namespace LRCounter.Controllers.Gameplay
         private int _leftCutsSinceLowScore = FarPast;
         private int _rightCutsSinceLowScore = FarPast;
         private const int FarPast = 1000;
+        // フェイル音を鳴らしたか（1曲につき1回だけ鳴らすための印。このクラスは1曲ごとに作り直される）
+        private bool _failSoundPlayed;
         // ─── 閾値の枠（バー外周を縁取る。全面塗りだと塗り色とブレンドして判別しにくいため枠方式） ───
         // 左右独立に点灯する。優先度: 白(PP取得＝合算ThresholdPP超え・両手同時) ＞ 黄(両手の自己ベスト精度
         // 更新・両手同時) ＞ 橙(その手の自己ベスト精度更新・その手だけ)。
@@ -573,9 +575,6 @@ namespace LRCounter.Controllers.Gameplay
             if (isMiss && _config.DropSoundMissStopAfterFail && _tracker.Failed) return;
             _dropSound.Play(isLeft, isMiss);
         }
-
-        // フェイル音を鳴らしたか（1曲につき1回だけ鳴らすための印）
-        private bool _failSoundPlayed;
 
         // その手で新しいミスまたはバッドカットがあれば true（＝ミスなら倍率に関係なく毎回鳴る）。
         // ただしミスも「低下」の一種として低スコア音の閾値倍率は上げる（難所で低スコア音を鳴らさないため）。

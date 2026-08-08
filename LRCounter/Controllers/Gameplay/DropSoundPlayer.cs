@@ -61,9 +61,6 @@ namespace LRCounter.Controllers.Gameplay
         // 生成ビープ音を表す設定値（これ以外はUserData/LRCounter/Soundのファイル名として扱う）
         public const string BeepClipName = "beep";
 
-        // 「鳴らさない」を表す設定値（フェイル音の既定値）
-        public const string NoneClipName = "none";
-
         public DropSoundPlayer(PluginConfig config)
         {
             _config = config;
@@ -88,7 +85,8 @@ namespace LRCounter.Controllers.Gameplay
             for (int hand = 0; hand < 2; hand++)
                 for (int kind = 0; kind < 2; kind++)
                     EnsureClip(hand, kind);
-            if (IsFailSoundSet) EnsureClip(0, KindFail); // フェイル音は左右共通なので1枠だけ
+            // フェイル音は左右共通なので1枠だけ。未設定ならここでクリップが解放される
+            EnsureClip(0, KindFail);
         }
 
         private static void EnsureAudioSource()
@@ -138,14 +136,14 @@ namespace LRCounter.Controllers.Gameplay
             PlayKind(hand, kind, volume, pitch, pan);
         }
 
-        // フェイル音が設定されているか（既定は "none" ＝無し。サウンドを選んだときだけ鳴る）
+        // フェイル音を鳴らす状態か。トグルがONで、かつサウンドが選ばれている（空欄でない）とき。
+        // 既定は「OFF・サウンド未設定」なので、ONにしても空欄のままなら鳴らない。
         public bool IsFailSoundSet =>
-            !string.IsNullOrEmpty(_config.DropSoundFailClip) &&
-            _config.DropSoundFailClip != NoneClipName;
+            _config.DropSoundFailEnabled && !string.IsNullOrEmpty(_config.DropSoundFailClip);
 
         // フェイル（体力0）時に1回だけ鳴らす音。設定できるのはサウンド（クリップ）だけなので、
         // 音量・ピッチは固定、パンは中央（左右の区別が無い音なので）。
-        // サウンドが未設定（"none"）なら何も鳴らさない。設定画面のテスト再生からも呼ばれる。
+        // 未設定なら何も鳴らさない。設定画面のテスト再生からも呼ばれる。
         public void PlayFail()
         {
             if (!IsFailSoundSet) return;
@@ -183,8 +181,12 @@ namespace LRCounter.Controllers.Gameplay
             if (kind == KindFail)
             {
                 // フェイル音は周波数を設定できないので固定値のビープにする。
-                // "none"（既定）＝サウンド未設定なので用意しない
-                if (!IsFailSoundSet) return null;
+                // 未設定（OFF・空欄）なら用意しない。以前に用意したクリップが残っていれば破棄する
+                if (!IsFailSoundSet)
+                {
+                    ReleaseClip(hand, kind);
+                    return null;
+                }
                 clipName = _config.DropSoundFailClip;
                 frequency = FailBeepFrequency;
             }
@@ -226,6 +228,16 @@ namespace LRCounter.Controllers.Gameplay
             if (_clips[hand, kind] != null) UnityEngine.Object.Destroy(_clips[hand, kind]);
             _clips[hand, kind] = clip;
             _clipKeys[hand, kind] = key;
+        }
+
+        // 枠のクリップを破棄して空にする（サウンドを未設定に戻したとき）。
+        // 読み込み中の印も消すので、進行中の非同期読み込みの結果は FinishLoad で捨てられる。
+        private static void ReleaseClip(int hand, int kind)
+        {
+            if (_clips[hand, kind] != null) UnityEngine.Object.Destroy(_clips[hand, kind]);
+            _clips[hand, kind] = null;
+            _clipKeys[hand, kind] = "";
+            _loadingKeys[hand, kind] = "";
         }
 
         // ─── カスタムサウンド（UserData/LRCounter の wav/ogg/mp3） ───────────────────
