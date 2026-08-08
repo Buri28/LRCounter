@@ -463,20 +463,13 @@
             <text text='[Fail Sound]' color='#FFA07A' />
           </horizontal>
 
-          <!-- フェイル音のON/OFF。ONでもサウンドが空欄なら鳴らない -->
-          <toggle-setting text='On Fail'
-                          value='drop-sound-fail-enabled'
-                          apply-on-change='true'
-                          bind-value='true'
-                          hover-hint='Play a sound once when you fail (energy reaches 0). Requires a Fail Sound to be selected below.' />
-
-          <!-- フェイル音。左右の区別なし・音量/ピッチ/周波数は固定。空欄（既定）なら鳴らさない -->
+          <!-- フェイル音。左右の区別なし・音量/ピッチは固定。空欄（既定）なら鳴らさない -->
           <dropdown-list-setting text='Fail Sound'
                           value='drop-sound-fail-clip'
                           options='fail-sound-options'
                           apply-on-change='true'
                           bind-value='true'
-                          hover-hint='Sound played once when you fail (energy reaches 0). Blank (default) = no sound even if On Fail is enabled, "beep" = generated tone. Volume and pitch are fixed.' />
+                          hover-hint='Sound played once when you fail (energy reaches 0). Blank (default) = no sound. Only your own sounds in UserData/LRCounter/Sound can be selected. Volume and pitch are fixed.' />
 
           <!-- テスト再生（現在の設定で左右それぞれ鳴らす） -->
           <horizontal spacing='4' pad-top='1' horizontal-fit='PreferredSize'>
@@ -500,6 +493,10 @@
                     on-click='test-miss-right'
                     pref-width='30'
                     hover-hint='Play the right-hand miss sound with the current settings.' />
+          </horizontal>
+
+          <!-- フェイル音のテスト再生（左右の区別が無いので3段目に単独で置く） -->
+          <horizontal spacing='4' pad-top='1' horizontal-fit='PreferredSize'>
             <button text='Test Fail'
                     on-click='test-fail'
                     pref-width='30'
