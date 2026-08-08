@@ -298,6 +298,13 @@
                           bind-value='true'
                           hover-hint='Play a sound when a note is missed or bad-cut (that hand&apos;s Miss Sound below). Independent from the low-score sound.' />
 
+          <!-- フェイル後はミス音を鳴らさない（NFで走り続けるときに鳴りっぱなしになるのを防ぐ） -->
+          <toggle-setting text='Stop Miss Sound After Fail'
+                          value='drop-sound-miss-stop-after-fail'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Once you fail (energy reaches 0), stop playing the miss sound for the rest of the song.' />
+
           <!-- 序盤の抑制: その手の合計ノーツ数がこの数に達するまでは鳴らさない(0=無効) -->
           <increment-setting text='Warmup Notes'
                           value='drop-sound-warmup-notes'
@@ -451,6 +458,19 @@
                           min='0' max='1' increment='0.05'
                           hover-hint='Volume of the right-hand miss sound.' />
 
+          <!-- ───────── Fail Sound (体力0で1回だけ。設定できるのはサウンドのみ) ───────── -->
+          <horizontal spacing='1' pad='0' pad-top='1'>
+            <text text='[Fail Sound]' color='#FFA07A' />
+          </horizontal>
+
+          <!-- フェイル音。左右の区別なし・音量/ピッチ/周波数は固定。"none"（既定）なら鳴らさない -->
+          <dropdown-list-setting text='Fail Sound'
+                          value='drop-sound-fail-clip'
+                          options='fail-sound-options'
+                          apply-on-change='true'
+                          bind-value='true'
+                          hover-hint='Sound played once when you fail (energy reaches 0). "none" = no sound (default), "beep" = generated tone. Volume and pitch are fixed.' />
+
           <!-- テスト再生（現在の設定で左右それぞれ鳴らす） -->
           <horizontal spacing='4' pad-top='1' horizontal-fit='PreferredSize'>
             <button text='Test Left'
@@ -473,6 +493,10 @@
                     on-click='test-miss-right'
                     pref-width='30'
                     hover-hint='Play the right-hand miss sound with the current settings.' />
+            <button text='Test Fail'
+                    on-click='test-fail'
+                    pref-width='30'
+                    hover-hint='Play the fail sound with the current settings.' />
           </horizontal>
 
           <!-- 下が切れるのでスペーサー -->
