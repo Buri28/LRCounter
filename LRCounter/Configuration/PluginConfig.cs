@@ -84,10 +84,11 @@ namespace LRCounter.Configuration
         public virtual float DropSoundMissRightVolume { get; set; } = 1.0f; // ミス音(右)の音量(0〜1)
 
         // ─── フェイル音（体力が0になった瞬間に1回だけ鳴る。左右の区別なし） ───
-        // 再生するサウンド。"none"=鳴らさない（既定）／"beep"=生成ビープ音／
-        // それ以外=UserData/LRCounter/Sound 内のファイル名(拡張子なし)。
+        public virtual bool DropSoundFailEnabled { get; set; } = false;  // フェイル時に鳴らすON/OFF
+        // 再生するサウンド。""(空欄)=サウンド未設定で鳴らさない（既定。ONにしても鳴らない）／
+        // "beep"=生成ビープ音／それ以外=UserData/LRCounter/Sound 内のファイル名(拡張子なし)。
         // 音量・ピッチ・周波数・パンは設定できない（固定値で鳴らす）。
-        public virtual string DropSoundFailClip { get; set; } = "none";
+        public virtual string DropSoundFailClip { get; set; } = "";
         // フェイル後はミス音を鳴らさない（true=ON）。NFで走り続けるときに鳴りっぱなしになるのを防ぐ。
         public virtual bool DropSoundMissStopAfterFail { get; set; } = true;
 
