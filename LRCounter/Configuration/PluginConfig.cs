@@ -62,7 +62,7 @@ namespace LRCounter.Configuration
         public virtual string DropSoundRightClip { get; set; } = "beep";
         public virtual float DropSoundLeftPitch { get; set; } = 1.0f;   // 左手サウンドのピッチ(0.5〜2.0)
         public virtual float DropSoundRightPitch { get; set; } = 1.0f;  // 右手サウンドのピッチ(0.5〜2.0)
-        public virtual float DropSoundScoreThreshold { get; set; } = 7f;  // その手のカットスコア平均よりこの点数以上低いカットで鳴らす(例:平均110で7なら103未満で鳴る)
+        public virtual float DropSoundScoreThreshold { get; set; } = 5f;  // その手のカットスコア平均よりこの点数以上低いカットで鳴らす(例:平均110で7なら103未満で鳴る)
         // 低スコア音の連発対策（高難度で鳴りすぎ防止）: 閾値を下回るカットが直近このノーツ数以内に
         // 続くたび閾値の倍率をx2→x4→x8と倍増する
         public virtual int DropSoundScoreWindowNotes { get; set; } = 5;
@@ -82,6 +82,14 @@ namespace LRCounter.Configuration
         public virtual float DropSoundMissRightPitch { get; set; } = 1.0f;  // ミス音(右)のピッチ(0.5〜2.0)
         public virtual float DropSoundMissLeftVolume { get; set; } = 1.0f;  // ミス音(左)の音量(0〜1)
         public virtual float DropSoundMissRightVolume { get; set; } = 1.0f; // ミス音(右)の音量(0〜1)
+
+        // ─── フェイル音（体力が0になった瞬間に1回だけ鳴る。左右の区別なし） ───
+        // 再生するサウンド。"none"=鳴らさない（既定）／"beep"=生成ビープ音／
+        // それ以外=UserData/LRCounter/Sound 内のファイル名(拡張子なし)。
+        // 音量・ピッチ・周波数・パンは設定できない（固定値で鳴らす）。
+        public virtual string DropSoundFailClip { get; set; } = "none";
+        // フェイル後はミス音を鳴らさない（true=ON）。NFで走り続けるときに鳴りっぱなしになるのを防ぐ。
+        public virtual bool DropSoundMissStopAfterFail { get; set; } = true;
 
         // ─── 合算ラベル（左右合計の精度・PPを中央上部に表示） ───────────────
         public virtual bool ShowTotalLabel { get; set; } = true; // 表示ON/OFF

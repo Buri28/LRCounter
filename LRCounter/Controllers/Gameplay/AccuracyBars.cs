@@ -170,6 +170,13 @@ namespace LRCounter.Controllers.Gameplay
                 ref _leftScoreThresholdMult, ref _leftCutsSinceLowScore);
             bool rightMiss = IsNewMiss(_tracker.RightTracker, ref _rightPrevMissCount,
                 ref _rightScoreThresholdMult, ref _rightCutsSinceLowScore);
+            // フェイル（体力0）音。曲中1回だけ鳴らす（このインスタンスは1曲ごとに作り直される）。
+            // サウンドが未設定なら PlayFail 側で何も鳴らない
+            if (_tracker.Failed && !_failSoundPlayed)
+            {
+                _failSoundPlayed = true;
+                _dropSound.PlayFail();
+            }
             if (leftLowScore) TryPlayDropSound(isLeft: true, _tracker.LeftTracker.TotalNotes, isMiss: false);
             if (leftMiss) TryPlayDropSound(isLeft: true, _tracker.LeftTracker.TotalNotes, isMiss: true);
             if (rightLowScore) TryPlayDropSound(isLeft: false, _tracker.RightTracker.TotalNotes, isMiss: false);
@@ -559,11 +566,16 @@ namespace LRCounter.Controllers.Gameplay
 
         // 鳴らす条件を満たしたときに、序盤の抑制(Warmup)を通過したら鳴らす。
         //   Warmup … その手の合計ノーツ数が DropSoundWarmupNotes 未満の間は鳴らさない（序盤は平均点の変動が激しいため）
+        //   フェイル後の抑制 … ミス音は DropSoundMissStopAfterFail がONならフェイル後は鳴らさない
         private void TryPlayDropSound(bool isLeft, int totalNotes, bool isMiss)
         {
             if (totalNotes < _config.DropSoundWarmupNotes) return;
+            if (isMiss && _config.DropSoundMissStopAfterFail && _tracker.Failed) return;
             _dropSound.Play(isLeft, isMiss);
         }
+
+        // フェイル音を鳴らしたか（1曲につき1回だけ鳴らすための印）
+        private bool _failSoundPlayed;
 
         // その手で新しいミスまたはバッドカットがあれば true（＝ミスなら倍率に関係なく毎回鳴る）。
         // ただしミスも「低下」の一種として低スコア音の閾値倍率は上げる（難所で低スコア音を鳴らさないため）。

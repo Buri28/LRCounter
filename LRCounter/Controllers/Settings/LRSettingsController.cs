@@ -267,6 +267,33 @@ namespace LRCounter.Controllers.Settings
             set { _config.DropSoundMissRightVolume = value; _config.Changed(); }
         }
 
+        // ———— フェイル音（設定できるのはサウンドのみ。既定は "none" ＝鳴らさない） ————
+        // 先頭に "none"（鳴らさない）を足した選択肢。フェイル音はONE/OFFトグルを持たず、
+        // "none" 以外を選んだときだけ鳴る。
+        [UIValue("fail-sound-options")]
+        public List<object> FailSoundOptions { get; } = BuildFailSoundOptions();
+
+        private static List<object> BuildFailSoundOptions()
+        {
+            var options = new List<object> { DropSoundPlayer.NoneClipName };
+            options.AddRange(BuildSoundOptions());
+            return options;
+        }
+
+        [UIValue("drop-sound-fail-clip")]
+        public string DropSoundFailClip
+        {
+            get => _config.DropSoundFailClip;
+            set { _config.DropSoundFailClip = value; _config.Changed(); PrewarmDropSounds(); }
+        }
+
+        [UIValue("drop-sound-miss-stop-after-fail")]
+        public bool DropSoundMissStopAfterFail
+        {
+            get => _config.DropSoundMissStopAfterFail;
+            set { _config.DropSoundMissStopAfterFail = value; _config.Changed(); }
+        }
+
         // ———— テスト再生・クリップ準備 ————
         // 実際の再生と同じ DropSoundPlayer を使い、現在の設定（クリップ・音量・周波数・ピッチ）で鳴らす
         private DropSoundPlayer? _testPlayer;
@@ -306,6 +333,13 @@ namespace LRCounter.Controllers.Settings
         {
             _testPlayer ??= new DropSoundPlayer(_config);
             _testPlayer.Play(isLeft: false, isMiss: true);
+        }
+
+        [UIAction("test-fail")]
+        public void TestFailSound()
+        {
+            _testPlayer ??= new DropSoundPlayer(_config);
+            _testPlayer.PlayFail();
         }
 
         // ———— Shared depth ————
@@ -528,6 +562,8 @@ namespace LRCounter.Controllers.Settings
             _config.DropSoundMissRightPitch = d.DropSoundMissRightPitch;
             _config.DropSoundMissLeftVolume = d.DropSoundMissLeftVolume;
             _config.DropSoundMissRightVolume = d.DropSoundMissRightVolume;
+            _config.DropSoundFailClip = d.DropSoundFailClip;
+            _config.DropSoundMissStopAfterFail = d.DropSoundMissStopAfterFail;
             _config.DepthZ = d.DepthZ;
             _config.AccBarSpacing = d.AccBarSpacing;
             _config.AccBarY = d.AccBarY;
@@ -587,6 +623,8 @@ namespace LRCounter.Controllers.Settings
             NotifyPropertyChanged(nameof(DropSoundMissRightPitch));
             NotifyPropertyChanged(nameof(DropSoundMissLeftVolume));
             NotifyPropertyChanged(nameof(DropSoundMissRightVolume));
+            NotifyPropertyChanged(nameof(DropSoundFailClip));
+            NotifyPropertyChanged(nameof(DropSoundMissStopAfterFail));
             NotifyPropertyChanged(nameof(DepthZ));
             NotifyPropertyChanged(nameof(AccBarSpacing));
             NotifyPropertyChanged(nameof(AccBarY));
