@@ -32,6 +32,9 @@ namespace LRCounter.Controllers.Gameplay
         private static readonly string[,] _clipKeys = new string[2, KindCount];
         // カスタム音を非同期読み込み中のキー（""=読み込み中でない）。二重に読み込みを走らせないための印
         private static readonly string[,] _loadingKeys = new string[2, KindCount];
+        // 枠のクリップが鳴り終わる予定の時刻（Time.time 基準。0=まだ鳴らしていない）。
+        // 差し替え時に「いつまで待てば破棄してよいか」を知るために再生のたびに更新する
+        private static readonly float[,] _clipEndTimes = new float[2, KindCount];
 
         // 音の種類（クリップ枠の第2添字）
         private const int KindScore = 0; // 低スコア音
@@ -176,6 +179,10 @@ namespace LRCounter.Controllers.Gameplay
             source.pitch = Mathf.Clamp(pitch, 0.5f, 2.0f);
             source.panStereo = pan;
             source.PlayOneShot(clip, 1.0f);
+
+            // 鳴り終わる時刻を控えておく（再生時間はピッチで縮む）。
+            // 差し替え時の破棄をこの時刻まで遅らせて、再生中のクリップが消えないようにする
+            _clipEndTimes[hand, kind] = Time.time + clip.length / source.pitch;
         }
 
         // [hand, kind] のクリップを現在の設定に合わせて用意して返す。まだ用意できていなければ null。
@@ -254,24 +261,26 @@ namespace LRCounter.Controllers.Gameplay
 
         // 枠にある古いクリップを破棄する。まだ鳴っている最中なら鳴り終わるまで破棄を遅らせる
         // （設定画面でテスト再生した直後にサウンドを変える、といった操作で踏みうるため）。
+        // 待ち時間は再生開始時に控えた「鳴り終わる予定の時刻」からの残り時間で決める。
+        // クリップ長そのものを待つと、鳴らし始めてしばらく経ってから差し替えた場合に
+        // 必要以上に待ち、逆に鳴らし直された直後だと足りない、というズレが出るため。
         private static void DestroyOldClip(int hand, int kind)
         {
             AudioClip? old = _clips[hand, kind];
+            _clips[hand, kind] = null;
             if (old == null) return;
 
             AudioSource? source = _sources[hand, kind];
-            bool playing = source != null && source.isPlaying;
-            if (playing)
+            float remaining = _clipEndTimes[hand, kind] - Time.time;
+            if (source != null && source.isPlaying && remaining > 0f)
             {
-                // PlayOneShot の再生時間はピッチで縮む。余裕をみて少し長めに待つ
-                float pitch = source!.pitch > 0.01f ? source.pitch : 1f;
-                UnityEngine.Object.Destroy(old, old.length / pitch + 0.5f);
+                UnityEngine.Object.Destroy(old, remaining + 0.5f); // 余裕をみて少し長めに待つ
             }
             else
             {
                 UnityEngine.Object.Destroy(old);
             }
-            _clips[hand, kind] = null;
+            _clipEndTimes[hand, kind] = 0f;
         }
 
         // ─── カスタムサウンド（UserData/LRCounter の wav/ogg/mp3） ───────────────────
