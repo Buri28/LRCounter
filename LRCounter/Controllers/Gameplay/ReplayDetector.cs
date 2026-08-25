@@ -14,9 +14,11 @@ namespace LRCounter.Controllers.Gameplay
     //   BeatLeader … ReplayerLauncher.IsStartedAsReplay（再生中か）と
     //                LaunchData.MainReplay.ReplayData.Player.Id（リプレイ主のID）を
     //                ProfileManager.Profile.Id（ローカルプレイヤーのID）と突き合わせる。IDなので確実。
-    //   ScoreSaber … Plugin.ReplayState.IsPlaybackEnabled（再生中か）と
-    //                Plugin.ReplayState.CurrentPlayerName（リプレイ主の表示名）を
-    //                LocalPlayerInfo.playerName（ローカルの表示名）と突き合わせる。
+    //   ScoreSaber … ReplayState.IsPlaybackEnabled（再生中か）と
+    //                ReplayState.CurrentPlayerName（リプレイ主の表示名）を
+    //                ローカルの表示名と突き合わせる。ReplayStateへの到達経路はバージョンで変わるため
+    //                GetScoreSaberReplayState() が既知の入口を順に試す（3.3系: Plugin.ReplayState[static] /
+    //                3.4系: ReplayStateRegistry.Current[static]・Plugin.Instance.ReplayState）。
     //                ScoreSaberはリプレイにプレイヤーIDを保持しないため名前一致でしか判定できないが、
     //                両者とも同じScoreSaberプロフィール名なので実用上は十分信頼できる。
     //
@@ -82,17 +84,18 @@ namespace LRCounter.Controllers.Gameplay
 
         // ─── ScoreSaber ──────────────────────────────────────────────────────────────
         // ScoreSaberのリプレイ再生中かを判定し、再生中なら所有者を返す。
-        // 失敗した場合は NotReplay にフォールバックする。
-        // ScoreSaberのリプレイ再生中かを判定するには、
-        // Plugin.ReplayState.IsPlaybackEnabled を参照する。
-        // さらに、Plugin.ReplayState.CurrentPlayerName と
-        // LocalPlayerInfo.playerName を比較して、所有者が自分か他人かを判定する。
-        // どちらかが null なら Unknown（安全側＝記録しない）。
-        // どちらも一致すれば Own、異なれば Foreign
+        // 判定材料は ReplayState.IsPlaybackEnabled（再生中か）と ReplayState.CurrentPlayerName（リプレイ主の表示名）。
+        // ただし「ReplayStateにどう辿り着くか」はScoreSaberのバージョンで変わるため GetScoreSaberReplayState() に分離した。
+        // ReplayStateが取れない場合は NotReplay（通常プレイ扱い）にフォールバックしつつ、
+        // ScoreSaberが導入済みなら警告を1回だけ出す（黙って落ちると他人のリプレイを記録してしまうため）。
         private static Ownership ScoreSaberOwnership(string? localNameOverride)
         {
-            var replayState = GetStatic("ScoreSaber.Plugin", "ReplayState");
-            if (replayState == null) return Ownership.NotReplay; // ScoreSaber未導入 or 状態未生成
+            var replayState = GetScoreSaberReplayState();
+            if (replayState == null)
+            {
+                WarnIfScoreSaberUnreachable();
+                return Ownership.NotReplay; // ScoreSaber未導入 or 状態に到達できず
+            }
 
             if (!(GetMember(replayState, "IsPlaybackEnabled") is bool enabled) || !enabled)
                 return Ownership.NotReplay;
@@ -106,31 +109,125 @@ namespace LRCounter.Controllers.Gameplay
             return result;
         }
 
+        // ScoreSaberの ReplayState 相当のインスタンスを返す。見つからなければ null。
+        //
+        // ScoreSaberは 3.4.0 で内部構成が大きく変わっており、入口が1つではない：
+        //   3.3系まで … ScoreSaber.Plugin.ReplayState が static（型は ScoreSaber.Core.ReplaySystem.ReplayState）
+        //   3.4系から … ScoreSaber.Plugin.ReplayState は instance に降格。状態は
+        //               ScoreSaber.Features.Replays.ReplayStateRegistry.Current（static）配下へ移動
+        //               （Plugin.Instance.ReplayState と同一インスタンス）。
+        // そのため既知の入口を順に試し、どれも当たらなければ限定的なアセンブリ走査で拾う。
+        // ReplayStateインスタンスは ReplayStateRegistry.Use() で差し替えられうるので、値はキャッシュせず毎回読む。
+        private static object? GetScoreSaberReplayState()
+        {
+            // 3.4系: ReplayStateRegistry.Current（static internal プロパティ）
+            var state = GetStatic("ScoreSaber.Features.Replays.ReplayStateRegistry", "Current");
+            if (LooksLikeReplayState(state)) return state;
+
+            // 3.3系まで: Plugin.ReplayState（static internal プロパティ）
+            state = GetStatic("ScoreSaber.Plugin", "ReplayState");
+            if (LooksLikeReplayState(state)) return state;
+
+            // 3.4系の別経路: Plugin.Instance（static）→ ReplayState（instance internal プロパティ）
+            state = GetMember(GetStatic("ScoreSaber.Plugin", "Instance"), "ReplayState");
+            if (LooksLikeReplayState(state)) return state;
+
+            return ScanScoreSaberForReplayState();
+        }
+
+        // IsPlaybackEnabled(bool) を持っていれば ReplayState 相当とみなす（型名には依存しない）。
+        private static bool LooksLikeReplayState(object? o) => o != null && GetMember(o, "IsPlaybackEnabled") is bool;
+
+        // 既知の入口が全部外れた（＝将来のScoreSaberでまた構成が変わった）ときの保険。
+        // ScoreSaberアセンブリ内の「名前に Replay を含む型」の staticメンバーだけを、名前を絞って覗く。
+        // 当たった入口(型・メンバー名)はキャッシュして再走査を防ぐ（外れた場合も「外れ」をキャッシュする）。
+        private static readonly string[] _ssStateMemberNames = { "Current", "ReplayState", "State", "Instance" };
+        private static bool _ssScanDone;
+        private static Type? _ssScanType;
+        private static string? _ssScanMember;
+
+        private static object? ScanScoreSaberForReplayState()
+        {
+            if (_ssScanDone)
+                return _ssScanType != null ? GetStatic(_ssScanType, _ssScanMember!) : null;
+            _ssScanDone = true;
+
+            var asm = FindScoreSaberAssembly();
+            if (asm == null) return null;
+
+            foreach (var type in GetTypesSafe(asm))
+            {
+                if (type.Name.IndexOf("Replay", StringComparison.OrdinalIgnoreCase) < 0) continue;
+                foreach (var member in _ssStateMemberNames)
+                {
+                    var value = GetStatic(type, member);
+                    if (!LooksLikeReplayState(value)) continue;
+                    _ssScanType = type;
+                    _ssScanMember = member;
+                    Plugin.Log.Info($"[LRCounter] ScoreSaber replay state located by scan: {type.FullName}.{member}");
+                    return value;
+                }
+            }
+            return null;
+        }
+
+        // ScoreSaberは入っているのに ReplayState に到達できない場合だけ、起動中1回だけ警告する。
+        // この状態ではScoreSaberリプレイが「通常プレイ」に見えてしまい、他人のリプレイでも
+        // 左右ベストが記録されるため、黙って進まず気づけるようにしておく。
+        private static bool _ssWarned;
+        private static void WarnIfScoreSaberUnreachable()
+        {
+            if (_ssWarned) return;
+            var asm = FindScoreSaberAssembly();
+            if (asm == null) return; // ScoreSaber未導入。通常プレイなので何も言わない
+            _ssWarned = true;
+            Plugin.Log.Warn($"[LRCounter] ScoreSaber {asm.GetName().Version} is loaded but its replay state could not be found. " +
+                            "ScoreSaber replay playback will be treated as normal play (someone else's replay may update your left/right bests).");
+        }
+
         // ScoreSaberのDIコンテナからローカルプレイヤー情報を引き、表示名を返す。
-        // DIコンテナにバインドされていない場合は null を返す（例外は投げない）。
-        // 失敗した場合は NotReplay にフォールバックする。
-        // 参照する型・メンバーは ScoreSaber 5.0.0 で確認したもの。将来のバージョンで変更される可能性がある。
+        // これは「自前APIで表示名が取れなかった」ときのフォールバックであり、取れなければ null を返す
+        // （呼び出し側で Unknown ＝記録しない側に倒れる）。
+        // なお ScoreSaber 3.4系には静的なDiContainer入口（旧 Plugin.Container）が無いため、
+        // 3.4系ではこの経路は常に null になる。3.3系までのフォールバックとして残している。
         private static string? GetScoreSaberLocalName()
         {
             try
             {
+                // 3.3系まで: Plugin.Container（static internal フィールド）。3.4系では存在しない。
                 if (!(GetStatic("ScoreSaber.Plugin", "Container") is DiContainer container)) return null;
 
-                // LocalPlayerInfo は単独でDIバインドされておらず、PlayerService.localPlayerInfo が保持する。
-                // そのため Container から PlayerService を解決し、その中の localPlayerInfo.playerName を読む。
+                // LocalPlayerInfo は単独でDIバインドされておらず、サービス側が保持する。
+                //   3.3系まで … Core.Services.PlayerService.localPlayerInfo
+                //   3.4系から … Features.Players.Services.GameSessionService.LocalPlayerInfo
                 object? lpi = null;
-                var psType = FindType("ScoreSaber.Core.Services.PlayerService");
-                if (psType != null)
+                foreach (var serviceName in new[]
                 {
-                    object? ps = container.TryResolve(psType);
-                    lpi = GetMember(ps, "localPlayerInfo", "LocalPlayerInfo");
+                    "ScoreSaber.Features.Players.Services.GameSessionService",
+                    "ScoreSaber.Core.Services.PlayerService",
+                })
+                {
+                    var serviceType = FindType(serviceName);
+                    if (serviceType == null) continue;
+                    object? service = container.TryResolve(serviceType);
+                    lpi = GetMember(service, "LocalPlayerInfo", "localPlayerInfo");
+                    if (lpi != null) break;
                 }
 
-                // フォールバック：将来 LocalPlayerInfo が直接バインドされている版に備える。
+                // フォールバック：LocalPlayerInfo が直接バインドされている版に備える。
                 if (lpi == null)
                 {
-                    var lpiType = FindType("ScoreSaber.Core.Data.LocalPlayerInfo");
-                    if (lpiType != null) lpi = container.TryResolve(lpiType);
+                    foreach (var lpiName in new[]
+                    {
+                        "ScoreSaber.Features.Players.Domain.LocalPlayerInfo",
+                        "ScoreSaber.Core.Data.LocalPlayerInfo",
+                    })
+                    {
+                        var lpiType = FindType(lpiName);
+                        if (lpiType == null) continue;
+                        lpi = container.TryResolve(lpiType);
+                        if (lpi != null) break;
+                    }
                 }
 
                 return GetMember(lpi, "playerName", "PlayerName") as string;
@@ -180,10 +277,35 @@ namespace LRCounter.Controllers.Gameplay
             return type;
         }
 
-        // 静的プロパティ/フィールドの値を読む。型・メンバーが無ければ null。
-        private static object? GetStatic(string typeName, string member)
+        // ロード済みアセンブリからScoreSaber本体を探す（見つからなければ null＝未導入）。
+        private static Assembly? _ssAssembly;
+        private static bool _ssAssemblyLookedUp;
+        private static Assembly? FindScoreSaberAssembly()
         {
-            var type = FindType(typeName);
+            if (_ssAssemblyLookedUp) return _ssAssembly;
+            _ssAssemblyLookedUp = true;
+            try
+            {
+                _ssAssembly = AppDomain.CurrentDomain.GetAssemblies()
+                    .FirstOrDefault(a => string.Equals(a.GetName().Name, "ScoreSaber", StringComparison.OrdinalIgnoreCase));
+            }
+            catch { /* ignore */ }
+            return _ssAssembly;
+        }
+
+        // アセンブリ内の型一覧。一部の型がロードできなくても、読めた分だけ返す。
+        private static IEnumerable<Type> GetTypesSafe(Assembly asm)
+        {
+            try { return asm.GetTypes(); }
+            catch (ReflectionTypeLoadException ex) { return ex.Types.Where(t => t != null)!; }
+            catch { return Enumerable.Empty<Type>(); }
+        }
+
+        // 静的プロパティ/フィールドの値を読む。型・メンバーが無ければ null。
+        private static object? GetStatic(string typeName, string member) => GetStatic(FindType(typeName), member);
+
+        private static object? GetStatic(Type? type, string member)
+        {
             if (type == null) return null;
             const BindingFlags bf = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
             try
