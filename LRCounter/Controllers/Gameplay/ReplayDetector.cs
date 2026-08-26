@@ -51,7 +51,7 @@ namespace LRCounter.Controllers.Gameplay
                 var ss = ScoreSaberOwnership(scoreSaberLocalName);
                 if (ss != Ownership.NotReplay) return ss;
             }
-            catch { /* 検出失敗は通常プレイ扱い */ }
+            catch { /* 再生中と判る前の失敗は通常プレイ扱い（判った後の失敗は各判定内で Unknown に倒す） */ }
             return Ownership.NotReplay;
         }
 
@@ -68,18 +68,24 @@ namespace LRCounter.Controllers.Gameplay
             if (!(GetStatic("BeatLeader.Replayer.ReplayerLauncher", "IsStartedAsReplay") is bool started) || !started)
                 return Ownership.NotReplay;
 
-            var launchData = GetStatic("BeatLeader.Replayer.ReplayerLauncher", "LaunchData");
-            var mainReplay = GetMember(launchData, "MainReplay");
-            var replayData = GetMember(mainReplay, "ReplayData");
-            var player = GetMember(replayData, "Player");
-            string? replayId = GetMember(player, "Id", "id") as string;
+            // ここから先は再生中と確定済み。所有者判定で失敗しても通常プレイ扱いに戻してはいけないので、
+            // 例外は Unknown（安全側＝記録しない）に倒す。
+            try
+            {
+                var launchData = GetStatic("BeatLeader.Replayer.ReplayerLauncher", "LaunchData");
+                var mainReplay = GetMember(launchData, "MainReplay");
+                var replayData = GetMember(mainReplay, "ReplayData");
+                var player = GetMember(replayData, "Player");
+                string? replayId = GetMember(player, "Id", "id") as string;
 
-            var profile = GetStatic("BeatLeader.DataManager.ProfileManager", "Profile");
-            string? localId = GetMember(profile, "Id", "id") as string;
+                var profile = GetStatic("BeatLeader.DataManager.ProfileManager", "Profile");
+                string? localId = GetMember(profile, "Id", "id") as string;
 
-            var result = Compare(replayId, localId);
-            Plugin.DebugLog($"[LRCounter] BeatLeader replay detected: replayId='{replayId}' localId='{localId}' -> {result}");
-            return result;
+                var result = Compare(replayId, localId);
+                Plugin.DebugLog($"[LRCounter] BeatLeader replay detected: replayId='{replayId}' localId='{localId}' -> {result}");
+                return result;
+            }
+            catch { return Ownership.Unknown; }
         }
 
         // ─── ScoreSaber ──────────────────────────────────────────────────────────────
@@ -100,13 +106,19 @@ namespace LRCounter.Controllers.Gameplay
             if (!(GetMember(replayState, "IsPlaybackEnabled") is bool enabled) || !enabled)
                 return Ownership.NotReplay;
 
-            string? replayName = GetMember(replayState, "CurrentPlayerName") as string;
-            // ローカル名は外から渡された自前API取得名を優先。無ければScoreSaber内部からの取得を試みる（通常は別コンテナで失敗）。
-            string? localName = !string.IsNullOrWhiteSpace(localNameOverride) ? localNameOverride : GetScoreSaberLocalName();
+            // ここから先は再生中と確定済み。所有者判定で失敗しても通常プレイ扱いに戻してはいけないので、
+            // 例外は Unknown（安全側＝記録しない）に倒す。
+            try
+            {
+                string? replayName = GetMember(replayState, "CurrentPlayerName") as string;
+                // ローカル名は外から渡された自前API取得名を優先。無ければScoreSaber内部からの取得を試みる（通常は別コンテナで失敗）。
+                string? localName = !string.IsNullOrWhiteSpace(localNameOverride) ? localNameOverride : GetScoreSaberLocalName();
 
-            var result = Compare(replayName, localName);
-            Plugin.DebugLog($"[LRCounter] ScoreSaber replay detected: replayName='{replayName}' localName='{localName}' -> {result}");
-            return result;
+                var result = Compare(replayName, localName);
+                Plugin.DebugLog($"[LRCounter] ScoreSaber replay detected: replayName='{replayName}' localName='{localName}' -> {result}");
+                return result;
+            }
+            catch { return Ownership.Unknown; }
         }
 
         // ScoreSaberの ReplayState 相当のインスタンスを返す。見つからなければ null。
@@ -140,17 +152,23 @@ namespace LRCounter.Controllers.Gameplay
 
         // 既知の入口が全部外れた（＝将来のScoreSaberでまた構成が変わった）ときの保険。
         // ScoreSaberアセンブリ内の「名前に Replay を含む型」の staticメンバーだけを、名前を絞って覗く。
-        // 当たった入口(型・メンバー名)はキャッシュして再走査を防ぐ（外れた場合も「外れ」をキャッシュする）。
+        // 当たった入口(型・メンバー名)だけをキャッシュする。空振りはキャッシュせず次回また走査する
+        // ——「見つからなかった」を覚えてしまうと、状態が後から生成される版で最初の1回の空振りが
+        // セッション中ずっと尾を引き、この保険自体が効かなくなるため。走査は曲開始時の1回だけなので
+        // 毎回やり直しても負荷にはならない。
         private static readonly string[] _ssStateMemberNames = { "Current", "ReplayState", "State", "Instance" };
-        private static bool _ssScanDone;
         private static Type? _ssScanType;
         private static string? _ssScanMember;
 
         private static object? ScanScoreSaberForReplayState()
         {
-            if (_ssScanDone)
-                return _ssScanType != null ? GetStatic(_ssScanType, _ssScanMember!) : null;
-            _ssScanDone = true;
+            if (_ssScanType != null)
+            {
+                var cached = GetStatic(_ssScanType, _ssScanMember!);
+                if (LooksLikeReplayState(cached)) return cached;
+                _ssScanType = null; // 覚えた入口が形を変えたら覚え直す
+                _ssScanMember = null;
+            }
 
             var asm = FindScoreSaberAssembly();
             if (asm == null) return null;
