@@ -65,8 +65,14 @@ namespace LRCounter.Controllers.Gameplay
         // どちらも一致すれば Own、異なれば Foreign
         private static Ownership BeatLeaderOwnership()
         {
-            if (!(GetStatic("BeatLeader.Replayer.ReplayerLauncher", "IsStartedAsReplay") is bool started) || !started)
+            object? startedObj = GetStatic("BeatLeader.Replayer.ReplayerLauncher", "IsStartedAsReplay");
+            if (!(startedObj is bool started))
+            {
+                // 型かメンバーが見つからない（BeatLeader未導入、または内部APIの名前が変わった）
+                WarnIfBeatLeaderUnreachable();
                 return Ownership.NotReplay;
+            }
+            if (!started) return Ownership.NotReplay;
 
             // ここから先は再生中と確定済み。所有者判定で失敗しても通常プレイ扱いに戻してはいけないので、
             // 例外は Unknown（安全側＝記録しない）に倒す。
@@ -187,6 +193,26 @@ namespace LRCounter.Controllers.Gameplay
                 }
             }
             return null;
+        }
+
+        // BeatLeaderは入っているのに ReplayerLauncher.IsStartedAsReplay を読めない場合だけ、起動中1回だけ警告する。
+        // この状態ではBeatLeaderリプレイが「通常プレイ」に見えてしまい、他人のリプレイでも
+        // 左右ベストが記録されるため、黙って進まず気づけるようにしておく。
+        private static bool _blWarned;
+        private static void WarnIfBeatLeaderUnreachable()
+        {
+            if (_blWarned) return;
+            _blWarned = true;
+            Assembly? asm = null;
+            try
+            {
+                asm = AppDomain.CurrentDomain.GetAssemblies()
+                    .FirstOrDefault(a => string.Equals(a.GetName().Name, "BeatLeader", StringComparison.OrdinalIgnoreCase));
+            }
+            catch { /* ignore */ }
+            if (asm == null) return; // BeatLeader未導入。通常プレイなので何も言わない
+            Plugin.Log.Warn($"[LRCounter] BeatLeader {asm.GetName().Version} is loaded but its replay state could not be found. " +
+                            "BeatLeader replay playback will be treated as normal play (someone else's replay may update your left/right bests).");
         }
 
         // ScoreSaberは入っているのに ReplayState に到達できない場合だけ、起動中1回だけ警告する。

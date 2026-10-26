@@ -14,8 +14,13 @@ namespace LRCounter.Controllers
     public class HandAccuracyStore : IInitializable
     {
         // 保存ファイル。設定(LRCounter.json)と同じ UserData フォルダに置く。
+        // カレントディレクトリはゲームフォルダとは限らないので、BSIPA の UserData パスを使う。
         private static readonly string FilePath =
-            Path.Combine(Environment.CurrentDirectory, "UserData", "LRCounter_HandBests.txt");
+            Path.Combine(IPA.Utilities.UnityGame.UserDataPath, "LRCounter_HandBests.txt");
+
+        // 読み込みに失敗したら、このセッションでは保存しない。
+        // 空のまま保存すると、読めなかった過去の記録をすべて上書きして消してしまうため。
+        private bool _loadFailed = false;
 
         // 1譜面ぶんの記録。精度(%)とそのときのPP、曲名・作者。
         public struct Record
@@ -106,13 +111,17 @@ namespace LRCounter.Controllers
             }
             catch (Exception ex)
             {
-                Plugin.Log.Warn($"[LRCounter] HandAccuracyStore load failed: {ex.Message}");
+                _loadFailed = true;
+                Plugin.Log.Warn($"[LRCounter] HandAccuracyStore load failed; hand bests will not be saved this session: {ex.Message}");
             }
         }
 
         // 全レコードをファイルへ書き出す（件数が少ないので毎回まるごと上書きで十分）。
+        // 書き込み途中で落ちてもファイルが壊れないよう、一時ファイルに書いてから差し替える。
+        // 差し替え前のファイルは .bak として1世代残す。
         private void Save()
         {
+            if (_loadFailed) return;
             try
             {
                 var sb = new StringBuilder();
@@ -126,7 +135,12 @@ namespace LRCounter.Controllers
                 }
 
                 Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-                File.WriteAllText(FilePath, sb.ToString());
+                string tmpPath = FilePath + ".tmp";
+                File.WriteAllText(tmpPath, sb.ToString());
+                if (File.Exists(FilePath))
+                    File.Replace(tmpPath, FilePath, FilePath + ".bak");
+                else
+                    File.Move(tmpPath, FilePath);
             }
             catch (Exception ex)
             {

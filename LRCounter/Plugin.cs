@@ -36,6 +36,7 @@ namespace LRCounter
         {
             Log            = logger;
             Config         = conf.Generated<PluginConfig>(); // IPAが設定ファイルを自動生成・ロード
+            Config.Sanitize();                               // 手で書き換えた範囲外の値を直す
             PluginConfig.Instance = Config;                  // 静的アクセス用（LRDisplayCommon のバー色取得など）
             HarmonyInstance = new Harmony("com.buri28.lrcounter");
 

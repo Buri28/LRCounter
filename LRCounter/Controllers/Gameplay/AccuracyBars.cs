@@ -583,7 +583,8 @@ namespace LRCounter.Controllers.Gameplay
         private bool IsNewMiss(HandPPTracker tracker, ref int prevMissCount,
             ref int thresholdMult, ref int cutsSinceLowScore)
         {
-            int missCount = tracker.MissedNotes + tracker.BadCuts;
+            // Miss＋バッドカットの数。ただしチェーンのリンクは除く（HandPPTracker.MissSoundCount の説明を参照）
+            int missCount = tracker.MissSoundCount;
             bool isNew = missCount > prevMissCount;
             prevMissCount = missCount;
             if (isNew)

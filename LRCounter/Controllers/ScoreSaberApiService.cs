@@ -19,12 +19,72 @@ namespace LRCounter.Controllers
         // Beat Saber のプラットフォーム抽象。Steam/Oculus などに依存せずユーザー情報を取得する。
         // Steamworks に直接依存すると、DepotDownloader 系インストール（Steamworks未同梱）や
         // Oculus版で動かないため、必ずこの抽象経由で取得する。
-        private readonly IPlatformUserModel? _platformUserModel;
+        //
+        // ゲームのバージョンで抽象の型が違うため、型を直接参照せずリフレクションで探す
+        // （直接参照すると、その型が無いバージョンでは DLL ごと読み込めなくなる）。
+        //   ～1.40.8 : IPlatformUserModel（PlatformUserModel.dll）… GetUserInfo(CancellationToken) → UserInfo.platformUserId
+        //   1.44.1～ : OculusStudios.Platform.Core.IPlatform     … user.userId（ulong。Steam なら SteamID64）
+        private const string LegacyUserModelTypeName = "IPlatformUserModel, PlatformUserModel";
+        private const string PlatformTypeName = "OculusStudios.Platform.Core.IPlatform, OculusStudios.Platform.Core";
+
+        private readonly object? _legacyUserModel; // IPlatformUserModel（～1.40.8）
+        private readonly object? _platform;        // IPlatform（1.44.1～）
 
         [Inject]
-        public ScoreSaberApiService([InjectOptional] IPlatformUserModel? platformUserModel = null)
+        public ScoreSaberApiService(DiContainer container)
         {
-            _platformUserModel = platformUserModel;
+            _platform = TryResolve(container, PlatformTypeName);
+            if (_platform == null)
+                _legacyUserModel = TryResolve(container, LegacyUserModelTypeName);
+        }
+
+        // 明示的インターフェイス実装だと GetType().GetProperty では見えないので、インターフェイス側から探す
+        private static object? GetInterfaceProperty(object obj, string name)
+        {
+            foreach (Type itf in obj.GetType().GetInterfaces())
+            {
+                var prop = itf.GetProperty(name);
+                if (prop != null) return prop.GetValue(obj);
+            }
+            return null;
+        }
+
+        private static System.Reflection.MethodInfo? FindInterfaceMethod(object obj, string name)
+        {
+            var method = obj.GetType().GetMethod(name, new[] { typeof(CancellationToken) });
+            if (method != null) return method;
+            foreach (Type itf in obj.GetType().GetInterfaces())
+            {
+                method = itf.GetMethod(name, new[] { typeof(CancellationToken) });
+                if (method != null) return method;
+            }
+            return null;
+        }
+
+        private static object? TryResolve(DiContainer container, string typeName)
+        {
+            try
+            {
+                // Type.GetType だと、無いアセンブリ（1.40.8 の OculusStudios.Platform.Core など）を
+                // 読み込もうとするので、読み込み済みのアセンブリから探す
+                string[] parts = typeName.Split(',');
+                string fullName = parts[0].Trim();
+                string asmName = parts.Length > 1 ? parts[1].Trim() : "";
+                Type? type = null;
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    if (asmName.Length > 0 && !string.Equals(asm.GetName().Name, asmName, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    type = asm.GetType(fullName, false);
+                    if (type != null) break;
+                }
+                return type == null ? null : container.TryResolve(type);
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.Warn($"[ScoreSaberApi] Resolve {typeName} failed: {Describe(ex)}");
+                return null;
+            }
         }
 
         static ScoreSaberApiService()
@@ -63,25 +123,49 @@ namespace LRCounter.Controllers
         // ─── プレイヤーID取得 ──────────────────────────────────────────────────────
 
         // ローカルプレイヤーのプラットフォームユーザーID（Steamなら SteamID64）を文字列で返す。
-        // Beat Saber の IPlatformUserModel から取得するので Steam/Oculus いずれでも動作する。
+        // Beat Saber のプラットフォーム抽象から取得するので Steam/Oculus いずれでも動作する。
         public async Task<string?> GetPlayerIdAsync()
         {
-            if (_platformUserModel == null)
-            {
-                Plugin.Log.Warn("[ScoreSaberApi] IPlatformUserModel not available; cannot get player id.");
-                return null;
-            }
-
             try
             {
-                UserInfo userInfo = await _platformUserModel.GetUserInfo(CancellationToken.None);
-                if (userInfo == null || string.IsNullOrEmpty(userInfo.platformUserId))
+                if (_platform != null)
                 {
+                    // 1.44.1～: IPlatform.user.userId
+                    object? user = _platform.GetType().GetProperty("user")?.GetValue(_platform)
+                        ?? GetInterfaceProperty(_platform, "user");
+                    object? idObj = user == null ? null
+                        : user.GetType().GetProperty("userId")?.GetValue(user) ?? GetInterfaceProperty(user, "userId");
+                    if (idObj is ulong id && id != 0)
+                    {
+                        Plugin.DebugLog($"[ScoreSaberApi] Platform={_platform.GetType().Name} UserId={id}");
+                        return id.ToString(CultureInfo.InvariantCulture);
+                    }
+                    Plugin.Log.Warn("[ScoreSaberApi] IPlatform returned no user id.");
+                    return null;
+                }
+
+                if (_legacyUserModel != null)
+                {
+                    // ～1.40.8: IPlatformUserModel.GetUserInfo(CancellationToken) → Task<UserInfo>
+                    var method = FindInterfaceMethod(_legacyUserModel, "GetUserInfo");
+                    if (method?.Invoke(_legacyUserModel, new object[] { CancellationToken.None }) is Task task)
+                    {
+                        await task;
+                        object? userInfo = task.GetType().GetProperty("Result")?.GetValue(task);
+                        string? platformUserId = userInfo?.GetType().GetField("platformUserId")?.GetValue(userInfo) as string;
+                        if (!string.IsNullOrEmpty(platformUserId))
+                        {
+                            object? platform = userInfo!.GetType().GetField("platform")?.GetValue(userInfo);
+                            Plugin.DebugLog($"[ScoreSaberApi] Platform={platform} UserId={platformUserId}");
+                            return platformUserId;
+                        }
+                    }
                     Plugin.Log.Warn("[ScoreSaberApi] GetUserInfo returned no user id.");
                     return null;
                 }
-                Plugin.DebugLog($"[ScoreSaberApi] Platform={userInfo.platform} UserId={userInfo.platformUserId}");
-                return userInfo.platformUserId;
+
+                Plugin.Log.Warn("[ScoreSaberApi] Platform user model not available; cannot get player id.");
+                return null;
             }
             catch (Exception ex)
             {
@@ -221,9 +305,11 @@ namespace LRCounter.Controllers
         // 1ページ100件で maxPages 分を「直列＋小ディレイ」で取得する（バースト保護）。
         // Top100だけだと101位以下の微小寄与を無視してしまうため、Threshold精緻化のため深めに取る。
         // PP降順でソート済みのリストを返す。ページ単位でv2→v1フォールバックする。
+        // 1ページ目が取れなかった（429・通信断など）ときは null を返す。空のリストを返すと
+        // 「ランクスコア0件」と区別できず、呼び出し側が成功としてキャッシュしてしまうため。
         // エンドポイント(v2): /api/v2/players/{id}/scores?sort=top&limit=100&page=N
         // エンドポイント(v1): /api/player/{id}/scores?sort=top&limit=100&page=N
-        public async Task<List<(double pp, string hash, int difficulty, string gameMode)>> GetTopScoresAsync(string playerId, int maxPages)
+        public async Task<List<(double pp, string hash, int difficulty, string gameMode)>?> GetTopScoresAsync(string playerId, int maxPages)
         {
             var scores = new List<(double pp, string hash, int difficulty, string gameMode)>();
             try
@@ -233,6 +319,11 @@ namespace LRCounter.Controllers
                     if (page > 1) await Task.Delay(PageFetchDelayMs); // バースト回避
 
                     int count = await FetchScoresPageAsync(playerId, page, scores);
+                    if (count < 0 && page == 1)
+                    {
+                        Plugin.Log.Warn("[ScoreSaberApi] GetTopScores: first page failed.");
+                        return null;
+                    }
                     // 失敗(-1)はここで打ち切り。1ページ100件未満ならそれが最終ページなので
                     // 以降のリクエストを省略する
                     if (count < 100) break;
@@ -245,6 +336,7 @@ namespace LRCounter.Controllers
             catch (Exception ex)
             {
                 Plugin.Log.Warn($"[ScoreSaberApi] GetTopScores failed: {Describe(ex)}");
+                return null;
             }
             return scores;
         }

@@ -90,6 +90,12 @@ namespace LRCounter.Controllers
                 }
 
                 var scores = await _apiService.GetTopScoresAsync(_playerId!, ScorePagesToFetch);
+                if (scores == null)
+                {
+                    // 空の一覧をキャッシュすると、セッション中ずっと「スコア0件」で Threshold を計算してしまう
+                    Plugin.Log.Warn("[LRCounter] PlayerDataCache: failed to fetch ranked scores; will retry next map.");
+                    return false;
+                }
 
                 TotalPP = totalPP.Value;
                 PlayerName = name;

@@ -16,6 +16,10 @@ namespace LRCounter.Models
         public int CutNotes        { get; private set; } = 0; // グッドカットの数
         public int MissedNotes     { get; private set; } = 0; // ミスの数
         public int BadCuts         { get; private set; } = 0; // バッドカットの数
+        // ミス音・低スコア閾値の引き上げに使う Miss＋バッドカットの数。チェーンのリンクは数えない。
+        // （リンクは1本ずつ Miss として届くので、数えるとチェーン1つでミス音が何回も鳴り、
+        //   閾値の倍率も一気に上がってしまう。ミスの数そのもの MissedNotes / BadCuts にはリンクも含める）
+        public int MissSoundCount  { get; private set; } = 0;
 
         // 現在の精度（0.0〜1.0）。MaxPossibleScoreが0のときは0を返す
         // 計算式: TotalScore / MaxPossibleScore
@@ -72,19 +76,22 @@ namespace LRCounter.Models
         }
 
         // ミスを記録する。スコアは加算されないが分母（MaxPossibleScore）は倍率込みで増える
-        public void AddMiss(int maxCutScore, int idealMult)
+        // isChainLink: チェーンのリンク（NoteData.GameplayType.BurstSliderElement）なら true
+        public void AddMiss(int maxCutScore, int idealMult, bool isChainLink)
         {
             MaxPossibleScore += maxCutScore * idealMult;
             MissedNotes++;
+            if (!isChainLink) MissSoundCount++;
             TotalNotes++;
             RecalculatePP();
         }
 
         // バッドカットを記録する。分母はミスと同様に増えるが、ミスとは別カウントにする
-        public void AddBadCut(int maxCutScore, int idealMult)
+        public void AddBadCut(int maxCutScore, int idealMult, bool isChainLink)
         {
             MaxPossibleScore += maxCutScore * idealMult;
             BadCuts++;
+            if (!isChainLink) MissSoundCount++;
             TotalNotes++;
             RecalculatePP();
         }
@@ -106,6 +113,7 @@ namespace LRCounter.Models
             CutNotes         = 0;
             MissedNotes      = 0;
             BadCuts          = 0;
+            MissSoundCount   = 0;
             PP               = 0;
             LastCutScore     = -1;
             CutScoreSerial   = 0;

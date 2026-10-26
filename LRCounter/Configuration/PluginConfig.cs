@@ -128,6 +128,60 @@ namespace LRCounter.Configuration
         // Changed イベント（IPA が生成するストアのためのメソッド）
         public virtual void Changed() { }
 
-        public virtual void OnReload() { }
+        // 設定ファイルを読み直したとき（手で書き換えたときを含む）に、範囲外の値を直す
+        public virtual void OnReload() => Sanitize();
+
+        // 設定ファイルを手で書き換えて範囲外の値が入っても計算が壊れないよう、設定画面と同じ範囲に収める。
+        // 例: AccBarMin=100 だと窓の幅が0になり0除算、選択肢に無い値（70など）だと窓の下端が負になる。
+        public void Sanitize()
+        {
+            AccBarMin = NearestAccBarMin(AccBarMin);
+
+            TextSize = Clamp(TextSize, 1f, 10f);
+            TotalLabelSize = Clamp(TotalLabelSize, 1f, 10f);
+            HandBestLabelSize = Clamp(HandBestLabelSize, 1f, 10f);
+            FlashDuration = Clamp(FlashDuration, 0f, 2f);
+            AccBarHeight = Clamp(AccBarHeight, 0.05f, 1.5f);
+            AccBarWidth = Clamp(AccBarWidth, 0.01f, 0.1f);
+
+            DropSoundScoreThreshold = Clamp(DropSoundScoreThreshold, 0.5f, 15f);
+            DropSoundScoreWindowNotes = Clamp(DropSoundScoreWindowNotes, 1, 20);
+            DropSoundScoreRecoverNotes = Clamp(DropSoundScoreRecoverNotes, 1, 20);
+            DropSoundWarmupNotes = Clamp(DropSoundWarmupNotes, 0, 50);
+
+            DropSoundLeftVolume = Clamp(DropSoundLeftVolume, 0f, 1f);
+            DropSoundRightVolume = Clamp(DropSoundRightVolume, 0f, 1f);
+            DropSoundMissLeftVolume = Clamp(DropSoundMissLeftVolume, 0f, 1f);
+            DropSoundMissRightVolume = Clamp(DropSoundMissRightVolume, 0f, 1f);
+            DropSoundLeftPitch = Clamp(DropSoundLeftPitch, 0.5f, 2f);
+            DropSoundRightPitch = Clamp(DropSoundRightPitch, 0.5f, 2f);
+            DropSoundMissLeftPitch = Clamp(DropSoundMissLeftPitch, 0.5f, 2f);
+            DropSoundMissRightPitch = Clamp(DropSoundMissRightPitch, 0.5f, 2f);
+            DropSoundLeftFrequency = Clamp(DropSoundLeftFrequency, 0f, 10000f);
+            DropSoundRightFrequency = Clamp(DropSoundRightFrequency, 0f, 10000f);
+            DropSoundMissLeftFrequency = Clamp(DropSoundMissLeftFrequency, 0f, 10000f);
+            DropSoundMissRightFrequency = Clamp(DropSoundMissRightFrequency, 0f, 10000f);
+
+            DropSoundLeftClip ??= "beep";
+            DropSoundRightClip ??= "beep";
+            DropSoundMissLeftClip ??= "beep";
+            DropSoundMissRightClip ??= "beep";
+            DropSoundFailClip ??= "";
+        }
+
+        // AccBarMin の選択肢（設定画面のドロップダウンと同じ）。いちばん近い値に寄せる
+        private static readonly int[] AccBarMinOptions = { 90, 80, 50, 0 };
+        private static int NearestAccBarMin(int value)
+        {
+            int best = AccBarMinOptions[0];
+            foreach (int option in AccBarMinOptions)
+                if (System.Math.Abs(option - value) < System.Math.Abs(best - value)) best = option;
+            return best;
+        }
+
+        private static float Clamp(float v, float min, float max)
+            => float.IsNaN(v) ? min : (v < min ? min : (v > max ? max : v));
+        private static int Clamp(int v, int min, int max)
+            => v < min ? min : (v > max ? max : v);
     }
 }

@@ -252,11 +252,25 @@ namespace LRCounter.Controllers.Gameplay
 
                 // 差分は「更新前のベスト」と比較するので、更新前に読み出す。
                 bool had = _handAccuracyStore.TryGet(key, out double oldLeft, out double oldRight);
-                // 付随情報（左右PP・曲名・作者）も保存する。PPはアンランクなら0。
-                var level = _sceneSetupData.beatmapLevel;
-                string songName = level != null ? level.songName : "";
-                string author = level != null && level.allMappers != null ? string.Join(", ", level.allMappers) : "";
-                _handAccuracyStore.UpdateIfBetter(key, curLeft, curRight, LeftTracker.PP, RightTracker.PP, songName, author);
+
+                // Slower Song は曲が遅く簡単になるので、片手ベストには保存しない（差分の表示だけ行う）。
+                var modifiers = _sceneSetupData.gameplayModifiers;
+                bool slower = modifiers != null && modifiers.songSpeed == GameplayModifiers.SongSpeed.Slower;
+                if (slower)
+                {
+                    Plugin.DebugLog("[LRCounter] Slower Song: hand bests are not saved.");
+                }
+                else
+                {
+                    // 付随情報（左右PP・曲名・作者）も保存する。PPは保存する精度（NF失敗時は×係数）から計算する。
+                    // アンランク・Star評価の取得失敗なら0。
+                    var level = _sceneSetupData.beatmapLevel;
+                    string songName = level != null ? level.songName : "";
+                    string author = level != null && level.allMappers != null ? string.Join(", ", level.allMappers) : "";
+                    double leftPP = PPCalculator.CalculatePP(curLeft / 100.0, StarRating);
+                    double rightPP = PPCalculator.CalculatePP(curRight / 100.0, StarRating);
+                    _handAccuracyStore.UpdateIfBetter(key, curLeft, curRight, leftPP, rightPP, songName, author);
+                }
 
                 if (!had) return (false, 0, 0); // 初回プレイは比較対象が無いので差分なし
                 return (true, curLeft - oldLeft, curRight - oldRight);
@@ -347,13 +361,16 @@ namespace LRCounter.Controllers.Gameplay
             return _playerDataCache.GetStarRatingAsync(hash, diff, gameMode);
         }
 
-        // Star評価が確定したら左右トラッカーをリセットしてStar値を設定する
+        // Star評価が確定したら左右トラッカーへStar値を設定し、PPを今の精度から計算し直す。
+        // 取得を待つ間もノーツイベントは集計しているので、トラッカーはリセットしない
+        // （リセットすると待っている間の Good / バッドカット / Miss が左右の集計から消える）。
         private void ApplyStarRating()
         {
-            LeftTracker.Reset();
-            RightTracker.Reset();
             LeftTracker.SetStarRating(StarRating);
             RightTracker.SetStarRating(StarRating);
+            if (_maxTotalScore > 0)
+                TotalPP = PPCalculator.CalculatePP((double)_totalScore / _maxTotalScore, StarRating);
+            OnPPUpdated?.Invoke();
         }
 
         // BeatSaberの難易度enumをScoreSaber APIの数値に変換する
@@ -460,13 +477,21 @@ namespace LRCounter.Controllers.Gameplay
                 noteData.colorType == ColorType.ColorA ? LeftTracker :
                 noteData.colorType == ColorType.ColorB ? RightTracker : null;
 
+            // ノーツの種類（NoteData.GameplayType）ごとの扱い:
+            //   Normal              … 集計する。ミス音の対象
+            //   Bomb                … 上で除外済み（精度の対象外）
+            //   BurstSliderHead     … チェーンの先頭。集計する。ミス音の対象（チェーン1つにつき1回）
+            //   BurstSliderElement  … チェーンのリンク。集計する（ミスの数にも入れる）が、ミス音・閾値の
+            //                         引き上げには使わない（1本ずつ届くので、チェーン1つで何回も鳴るため）
+            bool isChainLink = noteData.gameplayType == NoteData.GameplayType.BurstSliderElement;
+
             // グッド/バッド/ミスを種類ごとに記録する（バッドとミスは別カウント）
             if (scoringElement is GoodCutScoringElement)
                 tracker?.AddCut(cutScore, maxCut, actualMult, idealMult);
             else if (scoringElement is BadCutScoringElement)
-                tracker?.AddBadCut(maxCut, idealMult);
+                tracker?.AddBadCut(maxCut, idealMult, isChainLink);
             else
-                tracker?.AddMiss(maxCut, idealMult);
+                tracker?.AddMiss(maxCut, idealMult, isChainLink);
 
             //Plugin.Log.Debug($"[LRCounter] Note: color={noteData.colorType} type={scoringElement.GetType().Name} score={cutScore} ×{actualMult} (ideal ×{idealMult}, max {maxCut})");
 

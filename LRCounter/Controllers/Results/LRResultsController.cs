@@ -56,14 +56,27 @@ namespace LRCounter.Controllers.Results
         // リザルト画面が表示されるたびに呼ばれる
         private void OnResultsActivated(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
         {
-            if (!_config.Enabled) return;
+            // 無効のときは何も表示しない（前に作った表示が残っていれば隠す）
+            if (!_config.Enabled)
+            {
+                SetVisible(false);
+                return;
+            }
             if (_leftText == null || _rightText == null)
             {
                 _leftText = CreateHandText("LRResultL", -ColumnOffsetX);
                 _rightText = CreateHandText("LRResultR", ColumnOffsetX);
                 _divider = CreateDivider("LRResultDivider");
             }
+            SetVisible(true);
             UpdateTexts();
+        }
+
+        private void SetVisible(bool visible)
+        {
+            if (_leftText != null) _leftText.gameObject.SetActive(visible);
+            if (_rightText != null) _rightText.gameObject.SetActive(visible);
+            if (_divider != null) _divider.gameObject.SetActive(visible);
         }
 
         // 中央の縦区切り線を作る
