@@ -135,9 +135,13 @@ namespace LRCounter.Controllers.Gameplay
         // 精度低下フラッシュと同じタイミングで呼ぶ（設定画面のテスト再生からも呼ばれる）。
         // 有効/無効の判定は呼び出し側（低スコア・ミスそれぞれのトグル）で行う。
         // isMiss=true でミス用の設定（クリップ・周波数・ピッチ・音量）を使う。
+        // 自動テスト用：ミス音を鳴らそうとした回数（左, 右）。1回の起動で1曲しか遊ばないので戻さない
+        internal static readonly int[] MissPlayCount = new int[2];
+
         public void Play(bool isLeft, bool isMiss = false)
         {
             int hand = isLeft ? 0 : 1;
+            if (isMiss) MissPlayCount[hand]++;
             int kind = isMiss ? KindMiss : KindScore;
 
             float volume = isMiss

@@ -343,6 +343,10 @@ namespace LRCounter.Controllers.Gameplay
         // 現在プレイ中の譜面のStar評価を取得する（PlayerDataCache経由・セッション中キャッシュ）
         private Task<double> FetchStarRatingAsync()
         {
+            // 自動テスト：ScoreSaber を使わず、指定秒数待ってから仮の Star 評価を返す（取得が遅いときの再現）
+            if (AutoTest.AutoTestOptions.Enabled && AutoTest.AutoTestOptions.FakeStar > 0)
+                return FakeStarAsync();
+
             var key = _sceneSetupData.beatmapKey;
             var levelId = key.levelId;
 
@@ -359,6 +363,13 @@ namespace LRCounter.Controllers.Gameplay
             string gameMode = $"Solo{key.beatmapCharacteristic.serializedName}";
 
             return _playerDataCache.GetStarRatingAsync(hash, diff, gameMode);
+        }
+
+        private static async Task<double> FakeStarAsync()
+        {
+            await Task.Delay(TimeSpan.FromSeconds(AutoTest.AutoTestOptions.StarDelay));
+            AutoTest.AutoTestOptions.Status($"FAKESTAR {AutoTest.AutoTestOptions.FakeStar} after {AutoTest.AutoTestOptions.StarDelay}s");
+            return AutoTest.AutoTestOptions.FakeStar;
         }
 
         // Star評価が確定したら左右トラッカーへStar値を設定し、PPを今の精度から計算し直す。

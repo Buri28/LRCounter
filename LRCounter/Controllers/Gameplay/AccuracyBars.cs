@@ -113,8 +113,12 @@ namespace LRCounter.Controllers.Gameplay
         private const float BarLabelHeight = 0.05f; // %ラベルの高さ（バー上端からこのぶん上）
         private const float HandBestLabelAlpha = 0.7f; // バー下の片手ベスト精度ラベルの不透明度（控えめに見せる）
 
+        // 自動テスト用：今の曲の AccuracyBars（閾値倍率を読むため）
+        internal static AccuracyBars? Current { get; private set; }
+
         public AccuracyBars(PluginConfig config, LRTrackerService tracker, Color leftColor, Color rightColor)
         {
+            Current = this;
             _config = config;
             _tracker = tracker;
             _leftColor = leftColor;

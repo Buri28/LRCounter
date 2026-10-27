@@ -133,40 +133,42 @@ namespace LRCounter.Configuration
 
         // 設定ファイルを手で書き換えて範囲外の値が入っても計算が壊れないよう、設定画面と同じ範囲に収める。
         // 例: AccBarMin=100 だと窓の幅が0になり0除算、選択肢に無い値（70など）だと窓の下端が負になる。
+        // 値が変わる項目だけ代入する（代入のたびに BSIPA が設定ファイルを書き直すため）
         public void Sanitize()
         {
-            AccBarMin = NearestAccBarMin(AccBarMin);
+            int accBarMin = NearestAccBarMin(AccBarMin);
+            if (accBarMin != AccBarMin) AccBarMin = accBarMin;
 
-            TextSize = Clamp(TextSize, 1f, 10f);
-            TotalLabelSize = Clamp(TotalLabelSize, 1f, 10f);
-            HandBestLabelSize = Clamp(HandBestLabelSize, 1f, 10f);
-            FlashDuration = Clamp(FlashDuration, 0f, 2f);
-            AccBarHeight = Clamp(AccBarHeight, 0.05f, 1.5f);
-            AccBarWidth = Clamp(AccBarWidth, 0.01f, 0.1f);
+            { var v = Clamp(TextSize, 1f, 10f); if (v != TextSize) TextSize = v; }
+            { var v = Clamp(TotalLabelSize, 1f, 10f); if (v != TotalLabelSize) TotalLabelSize = v; }
+            { var v = Clamp(HandBestLabelSize, 1f, 10f); if (v != HandBestLabelSize) HandBestLabelSize = v; }
+            { var v = Clamp(FlashDuration, 0f, 2f); if (v != FlashDuration) FlashDuration = v; }
+            { var v = Clamp(AccBarHeight, 0.05f, 1.5f); if (v != AccBarHeight) AccBarHeight = v; }
+            { var v = Clamp(AccBarWidth, 0.01f, 0.1f); if (v != AccBarWidth) AccBarWidth = v; }
 
-            DropSoundScoreThreshold = Clamp(DropSoundScoreThreshold, 0.5f, 15f);
-            DropSoundScoreWindowNotes = Clamp(DropSoundScoreWindowNotes, 1, 20);
-            DropSoundScoreRecoverNotes = Clamp(DropSoundScoreRecoverNotes, 1, 20);
-            DropSoundWarmupNotes = Clamp(DropSoundWarmupNotes, 0, 50);
+            { var v = Clamp(DropSoundScoreThreshold, 0.5f, 15f); if (v != DropSoundScoreThreshold) DropSoundScoreThreshold = v; }
+            { var v = Clamp(DropSoundScoreWindowNotes, 1, 20); if (v != DropSoundScoreWindowNotes) DropSoundScoreWindowNotes = v; }
+            { var v = Clamp(DropSoundScoreRecoverNotes, 1, 20); if (v != DropSoundScoreRecoverNotes) DropSoundScoreRecoverNotes = v; }
+            { var v = Clamp(DropSoundWarmupNotes, 0, 50); if (v != DropSoundWarmupNotes) DropSoundWarmupNotes = v; }
 
-            DropSoundLeftVolume = Clamp(DropSoundLeftVolume, 0f, 1f);
-            DropSoundRightVolume = Clamp(DropSoundRightVolume, 0f, 1f);
-            DropSoundMissLeftVolume = Clamp(DropSoundMissLeftVolume, 0f, 1f);
-            DropSoundMissRightVolume = Clamp(DropSoundMissRightVolume, 0f, 1f);
-            DropSoundLeftPitch = Clamp(DropSoundLeftPitch, 0.5f, 2f);
-            DropSoundRightPitch = Clamp(DropSoundRightPitch, 0.5f, 2f);
-            DropSoundMissLeftPitch = Clamp(DropSoundMissLeftPitch, 0.5f, 2f);
-            DropSoundMissRightPitch = Clamp(DropSoundMissRightPitch, 0.5f, 2f);
-            DropSoundLeftFrequency = Clamp(DropSoundLeftFrequency, 0f, 10000f);
-            DropSoundRightFrequency = Clamp(DropSoundRightFrequency, 0f, 10000f);
-            DropSoundMissLeftFrequency = Clamp(DropSoundMissLeftFrequency, 0f, 10000f);
-            DropSoundMissRightFrequency = Clamp(DropSoundMissRightFrequency, 0f, 10000f);
+            { var v = Clamp(DropSoundLeftVolume, 0f, 1f); if (v != DropSoundLeftVolume) DropSoundLeftVolume = v; }
+            { var v = Clamp(DropSoundRightVolume, 0f, 1f); if (v != DropSoundRightVolume) DropSoundRightVolume = v; }
+            { var v = Clamp(DropSoundMissLeftVolume, 0f, 1f); if (v != DropSoundMissLeftVolume) DropSoundMissLeftVolume = v; }
+            { var v = Clamp(DropSoundMissRightVolume, 0f, 1f); if (v != DropSoundMissRightVolume) DropSoundMissRightVolume = v; }
+            { var v = Clamp(DropSoundLeftPitch, 0.5f, 2f); if (v != DropSoundLeftPitch) DropSoundLeftPitch = v; }
+            { var v = Clamp(DropSoundRightPitch, 0.5f, 2f); if (v != DropSoundRightPitch) DropSoundRightPitch = v; }
+            { var v = Clamp(DropSoundMissLeftPitch, 0.5f, 2f); if (v != DropSoundMissLeftPitch) DropSoundMissLeftPitch = v; }
+            { var v = Clamp(DropSoundMissRightPitch, 0.5f, 2f); if (v != DropSoundMissRightPitch) DropSoundMissRightPitch = v; }
+            { var v = Clamp(DropSoundLeftFrequency, 0f, 10000f); if (v != DropSoundLeftFrequency) DropSoundLeftFrequency = v; }
+            { var v = Clamp(DropSoundRightFrequency, 0f, 10000f); if (v != DropSoundRightFrequency) DropSoundRightFrequency = v; }
+            { var v = Clamp(DropSoundMissLeftFrequency, 0f, 10000f); if (v != DropSoundMissLeftFrequency) DropSoundMissLeftFrequency = v; }
+            { var v = Clamp(DropSoundMissRightFrequency, 0f, 10000f); if (v != DropSoundMissRightFrequency) DropSoundMissRightFrequency = v; }
 
-            DropSoundLeftClip ??= "beep";
-            DropSoundRightClip ??= "beep";
-            DropSoundMissLeftClip ??= "beep";
-            DropSoundMissRightClip ??= "beep";
-            DropSoundFailClip ??= "";
+            if (DropSoundLeftClip == null) DropSoundLeftClip = "beep";
+            if (DropSoundRightClip == null) DropSoundRightClip = "beep";
+            if (DropSoundMissLeftClip == null) DropSoundMissLeftClip = "beep";
+            if (DropSoundMissRightClip == null) DropSoundMissRightClip = "beep";
+            if (DropSoundFailClip == null) DropSoundFailClip = "";
         }
 
         // AccBarMin の選択肢（設定画面のドロップダウンと同じ）。いちばん近い値に寄せる

@@ -37,6 +37,10 @@ namespace LRCounter.Installers
             Container.BindInterfacesTo<LRResultsController>()
                      .AsSingle()
                      .NonLazy();
+
+            // 自動テスト：メニューに入ったら曲を自動で始める（起動引数 --lrcounter-autotest のときだけ）
+            if (AutoTest.AutoTestOptions.Enabled)
+                Container.BindInterfacesTo<AutoTest.AutoTestLevelStarter>().AsSingle().NonLazy();
         }
     }
 }

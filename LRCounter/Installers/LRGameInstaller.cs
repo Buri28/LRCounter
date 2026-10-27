@@ -34,6 +34,10 @@ namespace LRCounter.Installers
             Container.BindInterfacesAndSelfTo<LRDisplayController>()
                      .AsSingle()
                      .NonLazy();
+
+            // 自動テスト（起動引数 --lrcounter-autotest のときだけ）
+            if (AutoTest.AutoTestOptions.Enabled)
+                Container.BindInterfacesTo<AutoTest.AutoTestProbe>().AsSingle().NonLazy();
         }
     }
 }

@@ -49,6 +49,11 @@
       <HintPath>$(BeatSaberManagedPath)\UnityEngine.UnityWebRequestAudioModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <!-- 自動テストの画面撮影（ScreenCapture） -->
+    <Reference Include="UnityEngine.ScreenCaptureModule">
+      <HintPath>$(BeatSaberManagedPath)\UnityEngine.ScreenCaptureModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="UnityEngine.UIModule">
       <HintPath>$(BeatSaberManagedPath)\UnityEngine.UIModule.dll</HintPath>
       <Private>False</Private>
