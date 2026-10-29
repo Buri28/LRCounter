@@ -188,7 +188,7 @@ namespace LRCounter.Controllers.Gameplay
                     if (!LooksLikeReplayState(value)) continue;
                     _ssScanType = type;
                     _ssScanMember = member;
-                    Plugin.Log.Info($"[LRCounter] ScoreSaber replay state located by scan: {type.FullName}.{member}");
+                    Plugin.DebugLog($"[LRCounter] ScoreSaber replay state located by scan: {type.FullName}.{member}");
                     return value;
                 }
             }

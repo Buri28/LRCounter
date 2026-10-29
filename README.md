@@ -5,7 +5,6 @@ Beat Saber で左右それぞれの精度(%)と、その精度が何PPに相当�
 左右にバーを表示して周辺視野で精度が認識できるのを目指して作りました。  
 ※Counters+は使用しません。
 
-- 対応バージョン: Beat Saber **1.39.1**／**1.40.8**
 - 依存: BSIPA `^4.3.0` / BeatSaberMarkupLanguage `^1.12.0` / SiraUtil `^3.1.0`
 - 設定: ソロ選曲画面の **MODS タブ → LRCounter**、または `UserData/LRCounter.json`
 

@@ -134,18 +134,25 @@ namespace LRCounter.Controllers
                       .Append(San(r.SongName)).Append('\t').Append(San(r.Author)).Append('\n');
                 }
 
-                Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-                string tmpPath = FilePath + ".tmp";
-                File.WriteAllText(tmpPath, sb.ToString());
-                if (File.Exists(FilePath))
-                    File.Replace(tmpPath, FilePath, FilePath + ".bak");
-                else
-                    File.Move(tmpPath, FilePath);
+                WriteAtomically(FilePath, sb.ToString());
             }
             catch (Exception ex)
             {
                 Plugin.Log.Warn($"[LRCounter] HandAccuracyStore save failed: {ex.Message}");
             }
+        }
+
+        // 一時ファイルに書いてから差し替える。差し替え前のファイルは .bak として残す。
+        // （自動テストからも呼んで、ゲームの実行環境で File.Replace が動くことを確かめる）
+        internal static void WriteAtomically(string path, string content)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            string tmpPath = path + ".tmp";
+            File.WriteAllText(tmpPath, content);
+            if (File.Exists(path))
+                File.Replace(tmpPath, path, path + ".bak");
+            else
+                File.Move(tmpPath, path);
         }
 
         private static bool TryParse(string s, out double value)

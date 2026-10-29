@@ -49,6 +49,29 @@ namespace LRCounter.AutoTest
             _scoreController.scoringForNoteFinishedEvent -= OnNote;
         }
 
+        // 新規作成（File.Move）と上書き（File.Replace）の両方を通し、中身と .bak を確かめる
+        private static bool CheckAtomicWrite(out string detail)
+        {
+            string path = Path.Combine(AutoTestOptions.OutputDir, "atomic-write-test.txt");
+            try
+            {
+                foreach (var p in new[] { path, path + ".bak", path + ".tmp" })
+                    if (File.Exists(p)) File.Delete(p);
+                Controllers.HandAccuracyStore.WriteAtomically(path, "first");
+                Controllers.HandAccuracyStore.WriteAtomically(path, "second");
+                string now = File.ReadAllText(path);
+                string bak = File.Exists(path + ".bak") ? File.ReadAllText(path + ".bak") : "(none)";
+                bool tmpLeft = File.Exists(path + ".tmp");
+                detail = $"content={now} bak={bak} tmpLeft={tmpLeft}";
+                return now == "second" && bak == "first" && !tmpLeft;
+            }
+            catch (System.Exception ex)
+            {
+                detail = $"{ex.GetType().Name}: {ex.Message}".Replace('\r', ' ').Replace('\n', ' ');
+                return false;
+            }
+        }
+
         // F8 と同じ。ゲーム本体の InputActions.ToggleAutopilot（private static）を呼ぶ（1.40.8 / 1.44.1 にある）
         private static void ToggleAutopilot()
         {
@@ -117,6 +140,12 @@ namespace LRCounter.AutoTest
                 allOk &= countsOk && soundCountOk && soundsOk;
             }
             AutoTestOptions.Status($"CHECK star applied={(_tracker.StarRating > 0 ? "OK" : "NG")} config AccBarMin={_config.AccBarMin}");
+
+            // 4. 片手ベストの保存と同じ書き込み（一時ファイル → File.Replace）がゲームの実行環境で動く
+            //    （本物の保存は曲を最後まで遊んだときにしか走らないので、テスト用のファイルで試す）
+            bool writeOk = CheckAtomicWrite(out string writeDetail);
+            AutoTestOptions.Status($"CHECK atomicWrite={(writeOk ? "OK" : "NG")} {writeDetail}");
+            allOk &= writeOk;
             AutoTestOptions.Status("RESULT " + (allOk ? "OK" : "NG"));
 
             var path = Path.Combine(AutoTestOptions.OutputDir, "shot.png");
